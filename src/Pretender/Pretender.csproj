@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Version>0.0.1-prerelease</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Pretender.SourceGenerator\Pretender.SourceGenerator.csproj" ReferenceOutputAssembly="false" PackAsAnalyzer="true" />
+  </ItemGroup>
+
+</Project>
