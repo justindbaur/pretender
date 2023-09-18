@@ -4,11 +4,32 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.0.1-prerelease</Version>
+    <VersionPrefix>0.0.2</VersionPrefix>
+    <VersionSuffix>prerelease</VersionSuffix>
+    <Repository>https://github.com/justindbaur/pretender</Repository>
+    <Authors>Justin Baur</Authors>
+    <Description>A mocking framework that makes use of source generators an interceptors to be fast and give you control.</Description>
+    <PackageId>Pretender</PackageId>
+    <PackageTags>mocking;testing;unittests;source-generators</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Pretender.SourceGenerator\Pretender.SourceGenerator.csproj" ReferenceOutputAssembly="false" PackAsAnalyzer="true" />
+    <ProjectReference Include="..\Pretender.SourceGenerator\Pretender.SourceGenerator.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\Pretender.SourceGenerator\bin\$(Configuration)\netstandard2.0\Pretender.SourceGenerator.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

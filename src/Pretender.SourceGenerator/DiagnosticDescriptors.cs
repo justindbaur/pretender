@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 
 namespace Pretender.SourceGenerator
 {
@@ -10,8 +6,16 @@ namespace Pretender.SourceGenerator
     {
         public static DiagnosticDescriptor UnableToPretendSealedType { get; } = new(
             "PRTD001",
-            "Unabled to Pretend Sealed Types",
+            "Unable to Pretend Sealed Types",
             "Sealed types cannot be Pretended, did you mean to use an interface?",
+            "Usage",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        public static DiagnosticDescriptor InvalidSetupArgument { get; } = new(
+            "PRTD001",
+            "Invalid Setup Argument",
+            "We don't support operation type {0} as a setup argument.",
             "Usage",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true);

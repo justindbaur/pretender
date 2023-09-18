@@ -26,11 +26,20 @@ public class Pretend<T>
         return setup;
     }
 
-    public IPretendSetup<T> Setup(Expression<Action<T>> setupExpression)
+    //public IPretendSetup<T> Setup(Expression<Action<T>> setupExpression)
+    //{
+    //    var setup = new NonReturningPretendSetup<T>(this, setupExpression);
+    //    _setups.Add(setup);
+    //    return setup;
+    //}
+    public IPretendSetup<T, TReturn> SetupCore<TReturn>()
     {
-        var setup = new NonReturningPretendSetup<T>(this, setupExpression);
-        _setups.Add(setup);
-        return setup;
+        return null!;
+    }
+
+    public IPretendSetup<T> SetupCore()
+    {
+        return null!;
     }
 
     public void Handle(CallInfo callInfo)

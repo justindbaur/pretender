@@ -1,22 +1,48 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Operations;
+
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Pretender.SourceGenerator
 {
     internal class PretendEntrypoint
     {
-        public PretendEntrypoint(PretendTypeDiagnostics pretendTypeDiagnostics)
+        public static PretendEntrypoint FromMethodGeneric(IInvocationOperation operation)
         {
-            TypeToPretend = pretendTypeDiagnostics.TypeToPretend;
-            PretendName = pretendTypeDiagnostics.PretendName;
+            Debug.Assert(operation.TargetMethod.TypeArguments.Length == 1, "This should have been asserted already");
+            var genericLocation = ((GenericNameSyntax)((MemberAccessExpressionSyntax)((InvocationExpressionSyntax)operation.Syntax).Expression).Name).TypeArgumentList.Arguments[0].GetLocation();
+            var typeArgument = operation.TargetMethod.TypeArguments[0];
+            return new PretendEntrypoint(typeArgument,
+                genericLocation);
+        }
+
+        public PretendEntrypoint(ITypeSymbol typeToPretend, Location invocationLocation)
+        {
+            TypeToPretend = typeToPretend;
+
+            InvocationLocation = invocationLocation;
+
+            // TODO: Do more diagnostics
+            if (TypeToPretend.IsSealed)
+            {
+                Diagnostics.Add(Diagnostic.Create(
+                    DiagnosticDescriptors.UnableToPretendSealedType,
+                    invocationLocation,
+                    TypeToPretend));
+            }
+
+            PretendName = GetPretendName(TypeToPretend);
         }
 
         public ITypeSymbol TypeToPretend { get; }
+        public Location InvocationLocation { get; }
         public string PretendName { get; }
+        public List<Diagnostic> Diagnostics { get; } = new List<Diagnostic>();
 
         public CompilationUnitSyntax GetCompilationUnit()
         {
@@ -153,6 +179,25 @@ namespace Pretender.SourceGenerator
 
             return methodDeclaration
                 .WithBody(Block(methodBodyStatements));
+        }
+
+        private static string GetPretendName(ITypeSymbol typeToPretend)
+        {
+            // TODO: This logic won't work if someone has two distinct types that have the same name
+            // I will probably need to introduce randomness but will need to intercept `Create` before I do that probably.
+
+            if (typeToPretend.TypeKind == TypeKind.Interface)
+            {
+                // Interfaces generally have an I prefix, we will try to strip it off
+                if (typeToPretend.Name.StartsWith("I")
+                    && typeToPretend.Name.Length > 1
+                    && typeToPretend.Name[1] == char.ToUpper(typeToPretend.Name[1]))
+                {
+                    return typeToPretend.Name.Substring(1) + "PretendImplementation";
+                }
+            }
+
+            return typeToPretend.Name + "PretendImplementation";
         }
     }
 }

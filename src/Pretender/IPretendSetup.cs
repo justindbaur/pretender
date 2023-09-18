@@ -6,8 +6,6 @@ namespace Pretender
     {
         Pretend<T> Pretend { get; }
         LambdaExpression Expression { get; }
-        Pretend<T> Throws(Exception exception);
-        Pretend<T> Callback(Action<CallInfo> action);
         bool Matches(CallInfo callInfo);
         void Execute(CallInfo callInfo);
     }

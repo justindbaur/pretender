@@ -10,7 +10,7 @@ In no particular order
 - [ ] More matchers
 - [ ] Compiled Setup calls
 - [ ] Intercept .Create calls
-- [ ] Multiple uses of single type
+- [x] Multiple uses of single type
 - [ ] Classes (maybe already do)
 - [ ] Protected classes
 - [ ] Analyze all the things

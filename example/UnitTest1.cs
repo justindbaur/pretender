@@ -29,6 +29,14 @@ public class UnitTest1
 
         var thing = new MyOtherInterfacePretendImplementation(pretend);
     }
+
+    [Fact]
+    public void Test3()
+    {
+        var pretend = Pretend.For<IInterface>();
+        pretend
+            .Setup(i => i.Greeting("Hello", It.IsAny<int>()));
+    }
 }
 
 public interface IMyInterface
@@ -46,4 +54,12 @@ public interface IMyInterface
 public interface IMyOtherInterface
 {
     void Greeting();
+}
+
+/// <summary>
+/// My Information
+/// </summary>
+public interface IInterface
+{
+    string Greeting(string name, int hello);
 }

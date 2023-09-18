@@ -1,8 +1,11 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Text;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
 
 namespace Pretender.SourceGenerator
 {
@@ -11,48 +14,44 @@ namespace Pretender.SourceGenerator
     {
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
-           var pretendsWithDiagnostics = 
-                context.SyntaxProvider.CreateSyntaxProvider(
-                    predicate: static (node, _) => 
-                    {
-                        // Pretend.For<T>();
-                        if (node is InvocationExpressionSyntax 
-                            { 
-                                Expression: MemberAccessExpressionSyntax 
-                                {
-                                    // TODO: Will this work with a using static Pretender.Pretend
-                                    // ...
-                                    // For<IInterface>();
-                                    Expression: IdentifierNameSyntax { Identifier.ValueText: "Pretend" },
-                                    Name: GenericNameSyntax { Identifier.ValueText: "For", TypeArgumentList.Arguments.Count: 1 },
-                                },
-                            })
-                        {
-                            return true;
-                        }
+            IncrementalValuesProvider<PretendEntrypoint> pretendsWithDiagnostics =
+                 context.SyntaxProvider.CreateSyntaxProvider(
+                     predicate: static (node, _) =>
+                     {
+                         // Pretend.For<T>();
+                         if (node is InvocationExpressionSyntax
+                             {
+                                 Expression: MemberAccessExpressionSyntax
+                                 {
+                                     // TODO: Will this work with a using static Pretender.Pretend
+                                     // ...
+                                     // For<IInterface>();
+                                     Expression: IdentifierNameSyntax { Identifier.ValueText: "Pretend" },
+                                     Name: GenericNameSyntax { Identifier.ValueText: "For", TypeArgumentList.Arguments.Count: 1 },
+                                 },
+                             })
+                         {
+                             return true;
+                         }
 
-                        // TODO: Allow constructor and shortcut Pretend.Of<T>();
-                        if (false)
-                        {
-                            return true;
-                        }
-                        return false;
-                    },
-                    transform: static (context, token) =>
-                    {
-                        var operation = context.SemanticModel.GetOperation(context.Node, token);
-                        // TODO: I think this is where I need to filter out false positives
-                        if (operation.IsInvocationOperation(out var invocationOperation))
-                        {
-                            return PretendTypeDiagnostics.FromMethodGeneric(invocationOperation!, context.SemanticModel);
-                        }
+                         // TODO: Allow constructor and shortcut Pretend.Of<T>();
+                         return false;
+                     },
+                     transform: static (context, token) =>
+                     {
+                         var operation = context.SemanticModel.GetOperation(context.Node, token);
+                         // TODO: I think this is where I need to filter out false positives
+                         if (operation.IsInvocationOperation(out var invocationOperation))
+                         {
+                             return PretendEntrypoint.FromMethodGeneric(invocationOperation!);
+                         }
 
-                        // TODO: Check for constructor invocation operation
-                        // and create the PretendEntrypoint with that information
-                        return null;
-                    })
-                    .Where(static p => p != null)
-                    .WithTrackingName("FindPretendGenerics");
+                         // TODO: Check for constructor invocation operation
+                         // and create the PretendEntrypoint with that information
+                         return null;
+                     })
+                     .Where(static p => p != null)
+                     .WithTrackingName("FindPretendGenerics")!;
 
             context.RegisterSourceOutput(pretendsWithDiagnostics, static (context, pretend) =>
             {
@@ -63,16 +62,69 @@ namespace Pretender.SourceGenerator
             });
 
             var pretends = pretendsWithDiagnostics
-                .Where(p => p!.Diagnostics.Count == 0)
-                .Select((p, _) => new PretendEntrypoint(p))
-                .WithTrackingName("PretendsWithoutDiagnostics");
+                .Where(p => p!.Diagnostics.Count == 0);
 
-            context.RegisterSourceOutput(pretends, static (context, pretend) =>
+            context.RegisterSourceOutput(pretends.Collect(), static (context, pretends) =>
             {
-                var compilationUnit = pretend!.GetCompilationUnit();
+                var uniquePretends = pretends.ToImmutableHashSet(PretendEntrypointComparer.TypeSymbol);
+                foreach (var uniquePretend in uniquePretends)
+                {
+                    var compilationUnit = uniquePretend.GetCompilationUnit();
+                    // TODO: Should have different name per class
+                    context.AddSource($"Pretender.Types.{uniquePretend.PretendName}.g.cs", compilationUnit.GetText(Encoding.UTF8));
+                }
+            });
 
-                // TODO: Should have different name per class
-                context.AddSource($"Pretender.{pretend.PretendName}.g.cs", compilationUnit.GetText(Encoding.UTF8));
+            var setupCallsWithDiagnostics =
+                context.SyntaxProvider.CreateSyntaxProvider(
+                    predicate: static (node, _) => node.IsSetupCall(),
+                    transform: static (context, token) =>
+                    {
+                        // All of this should be asserted in the predicate
+                        var operation = context.SemanticModel.GetOperation(context.Node, token);
+                        if (operation!.IsValidSetupOperation(context.SemanticModel.Compilation, out var invocation))
+                        {
+                            // A valid Setup call will have an invocation in the first arg
+                            var firstArg = invocation!.Arguments[0];
+                            return new SetupEntrypoint(invocation);
+                        }
+                        return null;
+                    })
+                .Where(i => i is not null);
+
+            context.RegisterSourceOutput(setupCallsWithDiagnostics, static (context, setup) =>
+            {
+                foreach (var diagnostic in setup!.Diagnostics)
+                {
+                    context.ReportDiagnostic(diagnostic);
+                }
+            });
+
+            var setups = setupCallsWithDiagnostics
+                .Where(s => s!.Diagnostics.Count == 0);
+
+            context.RegisterSourceOutput(setups.Collect(), static (context, setups) =>
+            {
+                
+                var members = new List<MemberDeclarationSyntax>();
+
+                for (var i = 0; i < setups.Length; i++)
+                {
+                    var setup = setups[i];
+                    members.Add(setup!.GetMatcherDeclaration(i));
+                }
+
+                var classDeclaration = SyntaxFactory.ClassDeclaration("SetupInterceptors")
+                    .WithModifiers(SyntaxFactory.TokenList(
+                        SyntaxFactory.Token(SyntaxKind.PublicKeyword),
+                        SyntaxFactory.Token(SyntaxKind.StaticKeyword)))
+                    .AddMembers(members.ToArray());
+
+                var compilationUnit = SyntaxFactory.CompilationUnit()
+                    .AddMembers(classDeclaration)
+                    .NormalizeWhitespace();
+
+                context.AddSource("Pretender.Setups.g.cs", compilationUnit.GetText(Encoding.UTF8));
             });
         }
     }
