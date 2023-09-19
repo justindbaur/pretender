@@ -8,12 +8,12 @@ public class UnitTest1
     public void Test1()
     {
         var pretendMyInterface = Pretend.For<IMyInterface>();
-        pretendMyInterface
-            .Setup(i => i.Greeting(It.Is<string>(s => s == "Bob" || s == "John")))
-            .Returns("Hello");
+        //pretendMyInterface
+        //    .Setup(i => i.Greeting(It.Is<string>(s => s == "Bob" || s == "John")))
+        //    .Returns("Hello");
 
         pretendMyInterface
-            .Setup(i => i.Greeting("Mike"))
+            .Setup(i => i.Greeting("Mikey"))
             .Returns("Mike!");
 
         var myInterface = new MyInterfacePretendImplementation(pretendMyInterface);
@@ -46,7 +46,7 @@ public interface IMyInterface
     /// </summary>
     /// <param name="name"></param>
     /// <returns></returns>
-    string Greeting(string name);
+    string Greeting(string? name);
 
     void Something();
 }
@@ -62,4 +62,9 @@ public interface IMyOtherInterface
 public interface IInterface
 {
     string Greeting(string name, int hello);
+}
+
+public sealed class TestClass
+{
+
 }

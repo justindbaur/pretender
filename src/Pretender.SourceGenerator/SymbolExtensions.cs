@@ -46,5 +46,33 @@ namespace Pretender.SourceGenerator
                 return parameterSyntax;
             }
         }
+
+        public static bool EqualsByName(this ITypeSymbol type, string[] name)
+        {
+            var length = name.Length;
+            // Check that the type name matches what we expect
+            if (type.Name != name[length - 1])
+            {
+                return false;
+            }
+            // Enumerate the containing namespaces to ensure they match
+            var targetNamespace = type.ContainingNamespace;
+            for (var i = length - 2; i >= 0; i--)
+            {
+                if (targetNamespace.Name != name[i])
+                {
+                    return false;
+                }
+                targetNamespace = targetNamespace.ContainingNamespace;
+            }
+            // Once all namespace parts have been enumerated
+            // we should be in the global namespace
+            if (targetNamespace.IsGlobalNamespace)
+            {
+                return true;
+            }
+
+            return false;
+        }
     }
 }

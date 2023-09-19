@@ -13,7 +13,7 @@ namespace Pretender.SourceGenerator
             isEnabledByDefault: true);
 
         public static DiagnosticDescriptor InvalidSetupArgument { get; } = new(
-            "PRTD001",
+            "PRTD002",
             "Invalid Setup Argument",
             "We don't support operation type {0} as a setup argument.",
             "Usage",

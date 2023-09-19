@@ -1,6 +1,6 @@
 ﻿namespace Pretender.Matchers
 {
-    internal class AnonymousMatcher<T> : IMatcher
+    public class AnonymousMatcher<T> : IMatcher
     {
         private readonly Func<T?, bool> _matcher;
 

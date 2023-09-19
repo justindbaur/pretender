@@ -12,7 +12,7 @@ namespace Pretender
 
     public interface IPretendSetup<T, TResult> : IPretendSetup<T>
     {
-        Type ReturnType { get; }
+        Type ReturnType => typeof(TResult);
         Pretend<T> Returns(TResult result);
     }
 }

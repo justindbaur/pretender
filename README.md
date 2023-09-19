@@ -8,7 +8,10 @@ In no particular order
 - [ ] Property Support
 - [ ] Static Abstract (not support but we should fake an implementation)
 - [ ] More matchers
-- [ ] Compiled Setup calls
+- [x] Compiled Setup calls
+  - [x] Intercept Setup calls
+  - [ ] Support Base MatcherAttribute
+  - [ ] Support Matcher arguments
 - [ ] Intercept .Create calls
 - [x] Multiple uses of single type
 - [ ] Classes (maybe already do)
@@ -21,3 +24,9 @@ In no particular order
 - [ ] Benchmark vs NSub & Moq
 - [ ] out parameters
 - [ ] Multiple method overloads
+- [ ] Special case ILogger
+- [ ] Special case known good "Fake" implementations
+  - [ ] EphemeralDataProtectionProvider
+- [ ] Maybe not even use expressions in Setup
+- [ ] Obsolete public types that exist only for SourceGen
+  - [ ] pragma disable obsolete warnings

@@ -5,6 +5,7 @@ using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Operations;
 using Microsoft.CodeAnalysis.Text;
 
 namespace Pretender.SourceGenerator
@@ -118,13 +119,62 @@ namespace Pretender.SourceGenerator
                     .WithModifiers(SyntaxFactory.TokenList(
                         SyntaxFactory.Token(SyntaxKind.PublicKeyword),
                         SyntaxFactory.Token(SyntaxKind.StaticKeyword)))
-                    .AddMembers(members.ToArray());
+                    .AddMembers([.. members]);
+
+                var namespaceDeclaration = SyntaxFactory.NamespaceDeclaration(SyntaxFactory.ParseName("Pretender.SourceGeneration"))
+                    .AddMembers(classDeclaration)
+                    .AddUsings(
+                        SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System")),
+                        SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System.Runtime.CompilerServices")),
+                        SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System.Linq.Expressions")),
+                        SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("Pretender"))
+                    );
+
+                var il = KnownBlocks.InterceptsLocationAttribute;
 
                 var compilationUnit = SyntaxFactory.CompilationUnit()
-                    .AddMembers(classDeclaration)
+                    .AddMembers(il, namespaceDeclaration)
                     .NormalizeWhitespace();
 
                 context.AddSource("Pretender.Setups.g.cs", compilationUnit.GetText(Encoding.UTF8));
+            });
+
+            var createCalls = context.SyntaxProvider.CreateSyntaxProvider(
+                predicate: (node, token) =>
+                {
+                    if (node is InvocationExpressionSyntax
+                        {
+                            Expression: MemberAccessExpressionSyntax
+                            {
+                                Name.Identifier.ValueText: "Create"
+                            },
+                            ArgumentList.Arguments.Count: 0
+                        }
+                    )
+                    {
+                        return true;
+                    }
+
+                    return false;
+                },
+                transform: (context, token) =>
+                {
+                    var operation = context.SemanticModel.GetOperation(context.Node);
+                    var invocationOperation = (IInvocationOperation?)operation;
+
+                    if (invocationOperation?.Instance is not null)
+                    {
+                        return invocationOperation.TargetMethod;
+                    }
+
+                    return null;
+
+                })
+                .Where(i => i is not null);
+
+            context.RegisterSourceOutput(createCalls.Collect(), static (context, createCalls) =>
+            {
+                context.AddSource("Pretender.Creates.g.cs", SourceText.From("// hi", Encoding.UTF8));
             });
         }
     }
