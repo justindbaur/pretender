@@ -17,8 +17,6 @@ namespace Pretender.SourceGenerator
         {
             OriginalInvocation = invocationOperation;
             var setupExpressionArg = invocationOperation.Arguments[0];
-            var expressionType = setupExpressionArg.Parameter!.Type;
-            ExpressionType = expressionType;
 
             Debug.Assert(invocationOperation.Type is INamedTypeSymbol, "This should have been asserted via making sure it's the right invocation.");
 
@@ -50,7 +48,6 @@ namespace Pretender.SourceGenerator
             Arguments = setupInvocation.Arguments;
         }
         public IInvocationOperation OriginalInvocation { get; }
-        public ITypeSymbol ExpressionType { get; }
         public ITypeSymbol PretendType { get; }
         public List<Diagnostic> Diagnostics { get; } = new List<Diagnostic>();
         public IMethodSymbol SetupMethod { get; } = null!;
@@ -60,9 +57,12 @@ namespace Pretender.SourceGenerator
         {
             var statements = new List<StatementSyntax>();
 
-            TypeSyntax returnType = SetupMethod.ReturnsVoid
-                ? ParseTypeName($"global::Pretender.IPretendSetup<{PretendType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>")
-                : ParseTypeName($"global::Pretender.IPretendSetup<{PretendType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {SetupMethod.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>");
+            var typeArgumentList = SetupMethod.ReturnsVoid
+                ? TypeArgumentList(SingletonSeparatedList(ParseTypeName(PretendType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat))))
+                : TypeArgumentList(SeparatedList([ParseTypeName(PretendType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)), ParseTypeName(SetupMethod.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat))]));
+
+            var returnType = GenericName("IPretendSetup")
+                .WithTypeArgumentList(typeArgumentList);
 
             var matchStatements = new List<StatementSyntax>();
 
@@ -235,7 +235,7 @@ namespace Pretender.SourceGenerator
                         .WithType(ParseTypeName($"Pretend<{PretendType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>")),
 
                     Parameter(Identifier("setupExpression"))
-                        .WithType(ParseTypeName(ExpressionType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat))),
+                        .WithType(GenericName("Expression").AddTypeArgumentListArguments(GenericName(SetupMethod.ReturnsVoid ? "Action" : "Func").WithTypeArgumentList(typeArgumentList))),
                 })))
                 .WithModifiers(TokenList(Token(SyntaxKind.InternalKeyword), Token(SyntaxKind.StaticKeyword)))
                 .WithAttributeLists(SingletonList(AttributeList(

@@ -102,7 +102,7 @@ namespace SourceGeneratorTests
             /// </summary>
             public interface ISimpleInterface
             {
-                string Greeting(string name, int hello);
+                string? Greeting(string name, int hello);
                 void VoidMethod(string name);
             }
             """;

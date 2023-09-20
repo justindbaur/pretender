@@ -48,7 +48,7 @@ public interface IMyInterface
     /// </summary>
     /// <param name="name"></param>
     /// <returns></returns>
-    string Greeting(string? name);
+    Task<string> Greeting(string? name);
 
     void Something();
 }
@@ -63,7 +63,7 @@ public interface IMyOtherInterface
 /// </summary>
 public interface IInterface
 {
-    string Greeting(string name, int hello);
+    string? Greeting(string name, int num);
 }
 
 public sealed class TestClass
