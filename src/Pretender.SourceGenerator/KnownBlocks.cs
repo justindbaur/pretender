@@ -29,5 +29,14 @@ namespace Pretender.SourceGenerator
                 }
             }
             """).GetRoot()).Members[0];
+
+        public static NamespaceDeclarationSyntax OurNamespace { get; }
+            = SyntaxFactory.NamespaceDeclaration(SyntaxFactory.IdentifierName("Pretender.SourceGeneration"));
+
+        public static UsingDirectiveSyntax PretenderUsing { get; }
+            = SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("Pretender"));
+
+        public static UsingDirectiveSyntax CompilerServicesUsing { get; }
+            = SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System.Runtime.CompilerServices"));
     }
 }

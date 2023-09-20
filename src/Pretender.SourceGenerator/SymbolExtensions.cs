@@ -74,5 +74,10 @@ namespace Pretender.SourceGenerator
 
             return false;
         }
+
+        public static string ToPretendName(this ITypeSymbol symbol)
+        {
+            return $"Pretend{symbol.Name}{symbol.GetHashCode():X}";
+        }
     }
 }

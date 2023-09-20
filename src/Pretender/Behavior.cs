@@ -1,7 +1,7 @@
 ﻿namespace Pretender
 {
-    internal abstract class Behavior
+    public abstract class Behavior
     {
-        public abstract void Execute(CallInfo callInfo);
+        public abstract void Execute(ref CallInfo callInfo);
     }
 }

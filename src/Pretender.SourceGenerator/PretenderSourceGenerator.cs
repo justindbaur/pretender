@@ -85,9 +85,7 @@ namespace Pretender.SourceGenerator
                         var operation = context.SemanticModel.GetOperation(context.Node, token);
                         if (operation!.IsValidSetupOperation(context.SemanticModel.Compilation, out var invocation))
                         {
-                            // A valid Setup call will have an invocation in the first arg
-                            var firstArg = invocation!.Arguments[0];
-                            return new SetupEntrypoint(invocation);
+                            return new SetupEntrypoint(invocation!);
                         }
                         return null;
                     })
@@ -112,12 +110,12 @@ namespace Pretender.SourceGenerator
                 for (var i = 0; i < setups.Length; i++)
                 {
                     var setup = setups[i];
-                    members.Add(setup!.GetMatcherDeclaration(i));
+                    members.Add(setup!.GetMethodDeclaration(i));
                 }
 
                 var classDeclaration = SyntaxFactory.ClassDeclaration("SetupInterceptors")
                     .WithModifiers(SyntaxFactory.TokenList(
-                        SyntaxFactory.Token(SyntaxKind.PublicKeyword),
+                        SyntaxFactory.Token(SyntaxKind.FileKeyword),
                         SyntaxFactory.Token(SyntaxKind.StaticKeyword)))
                     .AddMembers([.. members]);
 
@@ -125,9 +123,9 @@ namespace Pretender.SourceGenerator
                     .AddMembers(classDeclaration)
                     .AddUsings(
                         SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System")),
-                        SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System.Runtime.CompilerServices")),
+                        KnownBlocks.CompilerServicesUsing,
                         SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System.Linq.Expressions")),
-                        SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("Pretender"))
+                        KnownBlocks.PretenderUsing
                     );
 
                 var il = KnownBlocks.InterceptsLocationAttribute;
@@ -164,17 +162,36 @@ namespace Pretender.SourceGenerator
 
                     if (invocationOperation?.Instance is not null)
                     {
-                        return invocationOperation.TargetMethod;
+                        // TODO: Do more validation, we should match the type this is being done on.
+                        return new CreateEntrypoint(invocationOperation);
                     }
 
                     return null;
-
                 })
                 .Where(i => i is not null);
 
             context.RegisterSourceOutput(createCalls.Collect(), static (context, createCalls) =>
             {
-                context.AddSource("Pretender.Creates.g.cs", SourceText.From("// hi", Encoding.UTF8));
+            var members = new MemberDeclarationSyntax[createCalls.Length];
+
+            for (var i = 0; i < createCalls.Length; i++)
+            {
+                members[i] = createCalls[i]!.GetMethodDeclaration(i);
+            }
+
+            var createClass = SyntaxFactory.ClassDeclaration("CreateInterceptors")
+                    .AddModifiers(SyntaxFactory.Token(SyntaxKind.FileKeyword), SyntaxFactory.Token(SyntaxKind.StaticKeyword))
+                    .AddMembers(members);
+
+                var createNamespace = KnownBlocks.OurNamespace
+                    .AddMembers(createClass)
+                    .AddUsings(KnownBlocks.CompilerServicesUsing, KnownBlocks.PretenderUsing);
+
+                var cu = SyntaxFactory.CompilationUnit()
+                    .AddMembers(KnownBlocks.InterceptsLocationAttribute, createNamespace)
+                    .NormalizeWhitespace();
+
+                context.AddSource("Pretender.Creates.g.cs", cu.GetText(Encoding.UTF8));
             });
         }
     }

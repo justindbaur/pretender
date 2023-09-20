@@ -1,13 +1,14 @@
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-
 namespace SourceGeneratorTests;
 
 public class MainTests
 {
     const string sourceToTest = $$"""
-        var pretend = Pretend.For<ISimpleInterface>();
-        pretend.Setup(i => i.Greeting("John", It.IsAny<int>()));
+        var pretend = Pretend.For<ISimpleInterface>()
+            .Setup(i => i.Greeting("John", It.IsAny<int>()))
+            .Returns("Hello");
+
+        pretend
+            .Setup(i => i.VoidMethod(It.IsAny<string>()));
 
         var service = pretend.Create();
         """;

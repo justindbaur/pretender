@@ -7,19 +7,13 @@ public class UnitTest1
     [Fact]
     public void Test1()
     {
-        var pretendMyInterface = Pretend.For<IMyInterface>();
-        //pretendMyInterface
-        //    .Setup(i => i.Greeting(It.Is<string>(s => s == "Bob" || s == "John")))
-        //    .Returns("Hello");
+        var pretendMyInterface = Pretend.For<IInterface>()
+            .Setup(i => i.Greeting("Mike", It.IsAny<int>()))
+            .Returns("Hi Mike!");
 
-        pretendMyInterface
-            .Setup(i => i.Greeting("Mikey"))
-            .Returns("Mike!");
+        var myInterface = pretendMyInterface.Create();
 
-        var myInterface = new MyInterfacePretendImplementation(pretendMyInterface);
-
-        Assert.Equal("Hello", myInterface.Greeting("John"));
-        Assert.Equal("Mike!", myInterface.Greeting("Mike"));
+        Assert.Equal("Hi Mike!", myInterface.Greeting("Mike", 12));
     }
 
     [Fact]
@@ -27,14 +21,22 @@ public class UnitTest1
     {
         var pretend = Pretend.For<IMyOtherInterface>();
 
-        var thing = new MyOtherInterfacePretendImplementation(pretend);
+        pretend
+            .Setup(i => i.Greeting())
+            .Callback((ref CallInfo callInfo) =>
+            {
+                callInfo.Arguments[0] = 1;
+            });
+
+
+        var myOtherInterface = pretend.Create();
+        myOtherInterface.Greeting();
     }
 
-    [Fact]
+        [Fact]
     public void Test3()
     {
-        var pretend = Pretend.For<IInterface>();
-        pretend
+        var pretend = Pretend.For<IInterface>()
             .Setup(i => i.Greeting("Hello", It.IsAny<int>()));
     }
 }

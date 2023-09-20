@@ -103,6 +103,7 @@ namespace SourceGeneratorTests
             public interface ISimpleInterface
             {
                 string Greeting(string name, int hello);
+                void VoidMethod(string name);
             }
             """;
 

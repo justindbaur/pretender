@@ -6,13 +6,12 @@ namespace Pretender
     {
         Pretend<T> Pretend { get; }
         LambdaExpression Expression { get; }
-        bool Matches(CallInfo callInfo);
-        void Execute(CallInfo callInfo);
+        void Execute(ref CallInfo callInfo);
+        void SetBehavior(Behavior behavior);
     }
 
     public interface IPretendSetup<T, TResult> : IPretendSetup<T>
     {
         Type ReturnType => typeof(TResult);
-        Pretend<T> Returns(TResult result);
     }
 }

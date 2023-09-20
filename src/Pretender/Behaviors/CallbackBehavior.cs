@@ -1,17 +1,19 @@
 ﻿namespace Pretender.Behaviors
 {
+    public delegate void Callback(ref CallInfo callInfo);
+
     internal class CallbackBehavior : Behavior
     {
-        private readonly Action<CallInfo> _action;
+        private readonly Callback _action;
 
-        public CallbackBehavior(Action<CallInfo> action)
+        public CallbackBehavior(Callback action)
         {
             _action = action;
         }
 
-        public override void Execute(CallInfo callInfo)
+        public override void Execute(ref CallInfo callInfo)
         {
-            _action(callInfo);
+            _action(ref callInfo);
         }
     }
 }

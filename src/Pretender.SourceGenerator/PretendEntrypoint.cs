@@ -36,7 +36,7 @@ namespace Pretender.SourceGenerator
                     TypeToPretend));
             }
 
-            PretendName = GetPretendName(TypeToPretend);
+            PretendName = TypeToPretend.ToPretendName();
         }
 
         public ITypeSymbol TypeToPretend { get; }
@@ -129,25 +129,27 @@ namespace Pretender.SourceGenerator
         {
             var methodBodyStatements = new List<StatementSyntax>();
 
-            // var arguments = new object?[n];
-            var argumentArrayCreation = LocalDeclarationStatement(
-                    VariableDeclaration(IdentifierName("var"), SingletonSeparatedList(
-                        VariableDeclarator(Identifier("arguments"), null, EqualsValueClause(
-                            ArrayCreationExpression(ArrayType(NullableType(PredefinedType(Token(SyntaxKind.ObjectKeyword))), SingletonList(ArrayRankSpecifier(SingletonSeparatedList<ExpressionSyntax>(LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(method.Parameters.Length))))))))))));
 
-            methodBodyStatements.Add(argumentArrayCreation);
 
-            for (int i = 0; i < method.Parameters.Length; i++)
-            {
-                var parameter = method.Parameters[i];
+            var collectionExpression = CollectionExpression()
+                .AddElements(method.Parameters.Select(p =>
+                {
+                    return ExpressionElement(IdentifierName(p.Name));
+                }).ToArray());
 
-                // arguments[0] = firstArg;
-                var parameterAssignment = ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
-                    left: ElementAccessExpression(IdentifierName("arguments"), BracketedArgumentList(SingletonSeparatedList(Argument(LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(i)))))),
-                    right: IdentifierName(parameter.Name)));
+            // ReadOnlySpan<object?> arguments = [arg0, arg1];
 
-                methodBodyStatements.Add(parameterAssignment);
-            }
+            var argumentsDeclaration = LocalDeclarationStatement(
+                VariableDeclaration(
+                    // ReadOnlySpan<object?>
+                    GenericName("Span").AddTypeArgumentListArguments(NullableType(PredefinedType(Token(SyntaxKind.ObjectKeyword))))
+                )
+                .AddVariables(VariableDeclarator("arguments")
+                    .WithInitializer(EqualsValueClause(collectionExpression))
+                )
+            );
+
+            methodBodyStatements.Add(argumentsDeclaration);
 
             // var callInfo = new CallInfo(__methodInfo_MethodName_0, arguments);
             var callInfoCreation = LocalDeclarationStatement(
@@ -162,7 +164,8 @@ namespace Pretender.SourceGenerator
             var handleCall = ExpressionStatement(InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                 IdentifierName("_pretend"),
                 IdentifierName("Handle")))
-                .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(IdentifierName("callInfo"))))));
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                    Argument(IdentifierName("callInfo")).WithRefKindKeyword(Token(SyntaxKind.RefKeyword))))));
 
             methodBodyStatements.Add(handleCall);
 
@@ -179,25 +182,6 @@ namespace Pretender.SourceGenerator
 
             return methodDeclaration
                 .WithBody(Block(methodBodyStatements));
-        }
-
-        private static string GetPretendName(ITypeSymbol typeToPretend)
-        {
-            // TODO: This logic won't work if someone has two distinct types that have the same name
-            // I will probably need to introduce randomness but will need to intercept `Create` before I do that probably.
-
-            if (typeToPretend.TypeKind == TypeKind.Interface)
-            {
-                // Interfaces generally have an I prefix, we will try to strip it off
-                if (typeToPretend.Name.StartsWith("I")
-                    && typeToPretend.Name.Length > 1
-                    && typeToPretend.Name[1] == char.ToUpper(typeToPretend.Name[1]))
-                {
-                    return typeToPretend.Name.Substring(1) + "PretendImplementation";
-                }
-            }
-
-            return typeToPretend.Name + "PretendImplementation";
         }
     }
 }

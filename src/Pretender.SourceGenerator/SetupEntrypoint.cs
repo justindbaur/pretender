@@ -30,20 +30,15 @@ namespace Pretender.SourceGenerator
 
             if (setupInvocation is null)
             {
-                // TODO: Add Error diagnostic
+                // TODO: Better Error diagnostic
+                Diagnostics.Add(Diagnostic.Create(
+                    DiagnosticDescriptors.InvalidSetupArgument,
+                    invocationOperation.Arguments[0].Syntax.GetLocation()
+                    ));
                 return;
             }
 
             var setupMethod = setupInvocation.TargetMethod;
-
-            if (setupMethod.ReturnsVoid)
-            {
-                // The setup method returns void
-            }
-            else
-            {
-                // There is a return type
-            }
 
             SetupMethod = setupMethod;
 
@@ -61,7 +56,7 @@ namespace Pretender.SourceGenerator
         public IMethodSymbol SetupMethod { get; } = null!;
         public ImmutableArray<IArgumentOperation> Arguments { get; }
 
-        public MethodDeclarationSyntax GetMatcherDeclaration(int index)
+        public MethodDeclarationSyntax GetMethodDeclaration(int index)
         {
             var statements = new List<StatementSyntax>();
 
@@ -71,11 +66,13 @@ namespace Pretender.SourceGenerator
 
             var matchStatements = new List<StatementSyntax>();
 
+            // Match method info first
+
             for (var i = 0; i < Arguments.Length; i++)
             {
                 var argument = Arguments[i];
 
-                var argLocalName = $"{argument.Parameter!.Name}_arg{i}";
+                var argLocalName = $"{argument.Parameter!.Name}_arg";
                 // var arg1 = (object)callInfo.Arguments[0];
                 matchStatements.Add(LocalDeclarationStatement(VariableDeclaration(ParseTypeName("var"))
                     .WithVariables(SingletonSeparatedList(
@@ -91,7 +88,7 @@ namespace Pretender.SourceGenerator
                     var binaryExpression = BinaryExpression(
                         SyntaxKind.NotEqualsExpression, 
                         IdentifierName(argLocalName), 
-                        CreateLiteralExpression(literalOperation));
+                        literalOperation.ToLiteralExpression());
 
                     var ifStatement = IfStatement(binaryExpression, Block(new[]
                     {
@@ -106,28 +103,71 @@ namespace Pretender.SourceGenerator
                     var allAttributes = invocationOperation.TargetMethod.GetAttributes();
                     var matcherAttribute = allAttributes.Single(ad => ad.AttributeClass!.EqualsByName(["Pretender", "Matchers", "MatcherAttribute"]));
 
-                    ITypeSymbol matcherType;
+                    INamedTypeSymbol matcherType;
                     if (matcherAttribute.AttributeClass!.IsGenericType)
                     {
                         // We are in the typed version, get the generic arg
-                        matcherType = matcherAttribute.AttributeClass.TypeArguments[0];
+                        matcherType = (INamedTypeSymbol)matcherAttribute.AttributeClass.TypeArguments[0];
                     }
                     else
                     {
                         // We are in the base version, get the constructor arg
                         // TODO: Make this work
                         // matcherType = matcherAttribute.ConstructorArguments[0];
-                        throw new NotImplementedException("We have not quite implemented constructor args for matcher attribute");
+                        var attributeType = matcherAttribute.ConstructorArguments[0];
+                        // TODO: When can Type be null?
+                        if (!attributeType.Type!.EqualsByName(["System", "Type"]))
+                        {
+                            throw new NotImplementedException("We expect the first arg to be a System.Type");
+                        }
+
+                        if (attributeType.Value is null)
+                        {
+                            throw new NotImplementedException("You can't pass in null for the matcher type.");
+                        }
+
+                        matcherType = (INamedTypeSymbol)attributeType.Value!;
                     }
 
-                    var matcherLocalName = $"{argument.Parameter.Name}_matcher{i}";
+                    // TODO: Attempt to close all the generics
+                    if (matcherType.IsUnboundGenericType)
+                    {
+                        if (invocationOperation.TargetMethod.TypeArguments.Length != matcherType.TypeArguments.Length)
+                        {
+                            throw new NotImplementedException("We don't support the matcher type having a different amount of generics than the matcher invocation");
+                        }
+
+                        matcherType = matcherType.ConstructedFrom.Construct([.. invocationOperation.TargetMethod.TypeArguments]);
+                    }
+
+                    var matcherLocalName = $"{argument.Parameter.Name}_matcher";
+
+                    var argumentList = invocationOperation.Arguments.Select(arg =>
+                    {
+                        if (arg.Value is ILiteralOperation literalOperation)
+                        {
+                            return Argument(literalOperation.ToLiteralExpression());
+                        }
+                        else if (arg.Value is IDelegateCreationOperation delegateCreation)
+                        {
+                            // TODO: Do something with .Target
+                            return Argument(LiteralExpression(SyntaxKind.NullLiteralExpression));
+                        }
+                        else
+                        {
+                            throw new NotImplementedException("We don't support this operation type yet.");
+                        }
+
+                        throw new NotImplementedException();
+                    });
+
                     // Create Matcher
                     // TODO: Pass in matcher arguments
                     // TODO: For speed, I can special case the any matcher and skip doing it at all
                     var t = LocalDeclarationStatement(VariableDeclaration(ParseTypeName("var"))
                             .WithVariables(SingletonSeparatedList(VariableDeclarator(matcherLocalName)
                                 .WithInitializer(EqualsValueClause(ObjectCreationExpression(ParseTypeName(matcherType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)))
-                                    .WithArgumentList(ArgumentList()))))));
+                                    .WithArgumentList(ArgumentList(SeparatedList(argumentList))))))));
 
                     matchStatements.Add(t);
                     // Run matcher
@@ -151,7 +191,7 @@ namespace Pretender.SourceGenerator
                     .WithModifiers(TokenList(Token(SyntaxKind.StaticKeyword)));
 
             var matchesCall = LocalDeclarationStatement(VariableDeclaration(
-                ParseTypeName("Func<CallInfo, bool>"))
+                ParseTypeName("Matcher"))
                     .WithVariables(SingletonSeparatedList(
                     VariableDeclarator("matchCall")
                             .WithInitializer(EqualsValueClause(lambda)))));
@@ -162,45 +202,29 @@ namespace Pretender.SourceGenerator
                 ? $"CompiledSetup<{PretendType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>"
                 : $"CompiledSetup<{PretendType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {SetupMethod.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>";
 
-            var returnSetupCall = ReturnStatement(
-                ObjectCreationExpression(ParseTypeName(returnObjectType))
+            var compiledSetupCreation = ObjectCreationExpression(ParseTypeName(returnObjectType))
                     .WithArgumentList(ArgumentList(SeparatedList(new[]
                         {
                             Argument(IdentifierName("pretend")),
                             Argument(IdentifierName("setupExpression")),
                             Argument(IdentifierName("matchCall"))
-                        })))
-                );
+                        })));
+
+            // var setup = new CompiledSetup(pretend, setupExpression, matchCall);
+            statements.Add(LocalDeclarationStatement(VariableDeclaration(ParseTypeName("var"))
+                .WithVariables(SingletonSeparatedList(VariableDeclarator("setup")
+                    .WithInitializer(EqualsValueClause(compiledSetupCreation))))));
+
+            // pretend.Add(setup);
+            statements.Add(ExpressionStatement(InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, IdentifierName("pretend"), IdentifierName("AddSetup")),
+                ArgumentList(SingletonSeparatedList(Argument(IdentifierName("setup")))))));
+
+            var returnSetupCall = ReturnStatement(IdentifierName("setup"));
 
             statements.Add(returnSetupCall);
 
-            var memberSyntax = (MemberAccessExpressionSyntax)((InvocationExpressionSyntax)OriginalInvocation.Syntax).Expression;
-            var operationSyntaxTree = OriginalInvocation.Syntax.SyntaxTree;
-            var resolver = OriginalInvocation.SemanticModel?.Compilation.Options.SourceReferenceResolver;
-            var filePath = resolver?.NormalizePath(operationSyntaxTree.FilePath, null) ?? operationSyntaxTree.FilePath;
-
-            var linePosSpan = operationSyntaxTree.GetLineSpan(memberSyntax.Name.Span);
-            var lineNumber = linePosSpan.StartLinePosition.Line + 1;
-            var characterNumber = linePosSpan.StartLinePosition.Character + 1;
-
-            var interceptor = Attribute(IdentifierName("InterceptsLocation"))
-                    .WithArgumentList(AttributeArgumentList(SeparatedList(new[]
-                    {
-                        AttributeArgument(
-                            LiteralExpression(
-                                SyntaxKind.StringLiteralExpression, 
-                                Literal(filePath))),
-
-                        AttributeArgument(
-                            LiteralExpression(
-                                SyntaxKind.NumericLiteralExpression,
-                                Literal(lineNumber))),
-
-                        AttributeArgument(
-                            LiteralExpression(
-                                SyntaxKind.NumericLiteralExpression,
-                                Literal(characterNumber))),
-                    })));
+            var interceptsLocation = new InterceptsLocationInfo(OriginalInvocation);
 
             return MethodDeclaration(returnType, $"Setup{index}")
                 .WithBody(Block(statements.ToArray()))
@@ -213,27 +237,9 @@ namespace Pretender.SourceGenerator
                     Parameter(Identifier("setupExpression"))
                         .WithType(ParseTypeName(ExpressionType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat))),
                 })))
-                .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
+                .WithModifiers(TokenList(Token(SyntaxKind.InternalKeyword), Token(SyntaxKind.StaticKeyword)))
                 .WithAttributeLists(SingletonList(AttributeList(
-                    SingletonSeparatedList(interceptor))));
-        }
-
-        private LiteralExpressionSyntax CreateLiteralExpression(ILiteralOperation operation)
-        {
-            if (operation.Type is null || !operation.ConstantValue.HasValue)
-            {
-                return LiteralExpression(SyntaxKind.NullLiteralExpression);
-            }
-            else if (operation.Type.EqualsByName(["System", "String"]))
-            {
-                return LiteralExpression(SyntaxKind.StringLiteralExpression, Literal((string)operation.ConstantValue.Value!));
-            }
-            else if (operation.Type.EqualsByName(["System", "Int32"]))
-            {
-                return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((int)operation.ConstantValue.Value!));
-            }
-
-            throw new NotImplementedException($"We don't support literals of {operation.Type.Name} yet.");
+                    SingletonSeparatedList(interceptsLocation.ToAttributeSyntax()))));
         }
 
         private void ValidateArgument(IArgumentOperation operation)
@@ -327,6 +333,7 @@ namespace Pretender.SourceGenerator
                 OperationKind.Block => SimplifyBlockOperation((IBlockOperation)operation, pretendType),
                 OperationKind.AnonymousFunction => SimplifyOperation(((IAnonymousFunctionOperation)operation).Body, pretendType),
                 OperationKind.Invocation => TryMethod((IInvocationOperation)operation, pretendType),
+                OperationKind.ExpressionStatement => SimplifyOperation(((IExpressionStatementOperation)operation).Operation, pretendType),
                 _ => null,
             };
         }
