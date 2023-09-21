@@ -3,14 +3,16 @@ namespace SourceGeneratorTests;
 public class MainTests
 {
     const string sourceToTest = $$"""
-        var pretend = Pretend.For<ISimpleInterface>()
-            .Setup(i => i.Greeting("John", It.IsAny<int>()))
-            .Returns("Hello");
+        var pretend = Pretend.For<ISimpleInterface>();
 
         pretend
-            .Setup(i => i.VoidMethod(It.IsAny<string>()));
+            .Setup(i => i.AsyncMethod("John"));
+
+        pretend
+            .Setup(i => i.AsyncReturningMethod(It.Is<string>(i => i == "Test")));
 
         var service = pretend.Create();
+        var anotherService = pretend.Create();
         """;
 
     [Fact]

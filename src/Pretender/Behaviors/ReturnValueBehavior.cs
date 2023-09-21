@@ -1,6 +1,6 @@
 ﻿namespace Pretender.Behaviors
 {
-    internal class ReturnValueBehavior : Behavior
+    internal sealed class ReturnValueBehavior : Behavior
     {
         private readonly object? _value;
 

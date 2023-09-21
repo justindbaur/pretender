@@ -8,7 +8,8 @@ In no particular order
     - [x] Base Implementation name off of ITypeSymbol derived info
     - [ ] Should allow naming customization
     - [ ] Respect [Pretend] attribute that is placed on a partial class
-- [ ] Async/Task Support
+- [x] Async/Task Support
+    - [ ] Custom awaitable (honestly don't think I care)
 - [ ] Classes (maybe already do)
 - [ ] Benchmark vs NSub & Moq
 - [ ] Property Support

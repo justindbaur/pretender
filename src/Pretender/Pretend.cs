@@ -30,6 +30,7 @@ public class Pretend<T>
         throw new InvalidProgramException("This method should have been intercepted via a source generator.");
     }
 
+    [DebuggerStepThrough]
     [EditorBrowsable(EditorBrowsableState.Never)]
     // TODO: Make this obsolete
     public void Handle(ref CallInfo callInfo)

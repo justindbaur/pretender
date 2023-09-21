@@ -15,18 +15,18 @@ namespace Pretender.SourceGenerator
         public CreateEntrypoint(IInvocationOperation operation)
         {
             Operation = operation;
+            Location = new InterceptsLocationInfo(operation);
 
             // TODO: Do any Diagnostics?
         }
 
+        public InterceptsLocationInfo Location { get; }
         public IInvocationOperation Operation { get; }
 
         public MethodDeclarationSyntax GetMethodDeclaration(int index)
         {
             var returnType = Operation.TargetMethod.ReturnType;
             var returnTypeName = returnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-            var interceptsLocation = new InterceptsLocationInfo(Operation);
 
             var returnStatement = ReturnStatement(ObjectCreationExpression(ParseTypeName(returnType.ToPretendName()))
                     .AddArgumentListArguments(Argument(IdentifierName("pretend"))));
@@ -39,9 +39,23 @@ namespace Pretender.SourceGenerator
                         .WithType(ParseTypeName($"Pretend<{returnType}>"))
                         .WithModifiers(TokenList(Token(SyntaxKind.ThisKeyword))),
                 })))
-                .WithModifiers(TokenList(Token(SyntaxKind.InternalKeyword), Token(SyntaxKind.StaticKeyword)))
-                .WithAttributeLists(SingletonList(AttributeList(
-                    SingletonSeparatedList(interceptsLocation.ToAttributeSyntax()))));
+                .WithModifiers(TokenList(Token(SyntaxKind.InternalKeyword), Token(SyntaxKind.StaticKeyword)));
         }
     }
+
+    public class CreateEntryPointComparer : IEqualityComparer<CreateEntrypoint>
+    {
+        public static CreateEntryPointComparer Instance = new();
+
+        bool IEqualityComparer<CreateEntrypoint>.Equals(CreateEntrypoint x, CreateEntrypoint y)
+        {
+            return SymbolEqualityComparer.Default.Equals(x.Operation.TargetMethod.ReturnType, y.Operation.TargetMethod.ReturnType);
+        }
+
+        int IEqualityComparer<CreateEntrypoint>.GetHashCode(CreateEntrypoint obj)
+        {
+            return SymbolEqualityComparer.Default.GetHashCode(obj.Operation.TargetMethod.ReturnType);
+        }
+    }
+
 }

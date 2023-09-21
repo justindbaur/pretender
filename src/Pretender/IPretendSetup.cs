@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+﻿using System.ComponentModel;
+using System.Linq.Expressions;
 
 namespace Pretender
 {
@@ -7,6 +8,8 @@ namespace Pretender
         Pretend<T> Pretend { get; }
         LambdaExpression Expression { get; }
         void Execute(ref CallInfo callInfo);
+
+        [EditorBrowsable(EditorBrowsableState.Advanced)]
         void SetBehavior(Behavior behavior);
     }
 

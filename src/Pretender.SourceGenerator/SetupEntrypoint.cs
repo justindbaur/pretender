@@ -47,6 +47,7 @@ namespace Pretender.SourceGenerator
 
             Arguments = setupInvocation.Arguments;
         }
+
         public IInvocationOperation OriginalInvocation { get; }
         public ITypeSymbol PretendType { get; }
         public List<Diagnostic> Diagnostics { get; } = new List<Diagnostic>();
@@ -57,9 +58,13 @@ namespace Pretender.SourceGenerator
         {
             var statements = new List<StatementSyntax>();
 
+            var returnTypeString = SetupMethod.ReturnsVoid
+                ? null
+                : SetupMethod.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
             var typeArgumentList = SetupMethod.ReturnsVoid
                 ? TypeArgumentList(SingletonSeparatedList(ParseTypeName(PretendType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat))))
-                : TypeArgumentList(SeparatedList([ParseTypeName(PretendType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)), ParseTypeName(SetupMethod.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat))]));
+                : TypeArgumentList(SeparatedList([ParseTypeName(PretendType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)), ParseTypeName(returnTypeString!)]));
 
             var returnType = GenericName("IPretendSetup")
                 .WithTypeArgumentList(typeArgumentList);
@@ -151,6 +156,7 @@ namespace Pretender.SourceGenerator
                         else if (arg.Value is IDelegateCreationOperation delegateCreation)
                         {
                             // TODO: Do something with .Target
+                            var anonymousFunction = (IAnonymousFunctionOperation)delegateCreation.Target;
                             return Argument(LiteralExpression(SyntaxKind.NullLiteralExpression));
                         }
                         else
@@ -198,17 +204,61 @@ namespace Pretender.SourceGenerator
 
             statements.Add(matchesCall);
 
-            var returnObjectType = SetupMethod.ReturnsVoid
-                ? $"CompiledSetup<{PretendType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>"
-                : $"CompiledSetup<{PretendType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {SetupMethod.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>";
+            GenericNameSyntax returnObjectType;
+            var objectCreationArguments = ArgumentList(
+                SeparatedList(new[]
+                {
+                    Argument(IdentifierName("pretend")),
+                    Argument(IdentifierName("setupExpression")),
+                    Argument(IdentifierName("matchCall"))
+                }));
 
-            var compiledSetupCreation = ObjectCreationExpression(ParseTypeName(returnObjectType))
-                    .WithArgumentList(ArgumentList(SeparatedList(new[]
-                        {
-                            Argument(IdentifierName("pretend")),
-                            Argument(IdentifierName("setupExpression")),
-                            Argument(IdentifierName("matchCall"))
-                        })));
+            if (SetupMethod.ReturnsVoid)
+            {
+                returnObjectType = GenericName("VoidCompiledSetup")
+                    .WithTypeArgumentList(typeArgumentList);
+            }
+            else
+            {
+                returnObjectType = GenericName("ReturningCompiledSetup")
+                    .WithTypeArgumentList(typeArgumentList);
+
+                ExpressionSyntax additionalArgument;
+
+                if (SetupMethod.ReturnType.EqualsByName(["System", "Threading", "Tasks", "Task"]))
+                {
+                    if (SetupMethod.ReturnType is INamedTypeSymbol namedType && namedType.TypeArguments.Length == 1)
+                    {
+                        additionalArgument = ParseExpression($"Task.FromResult<{namedType.TypeArguments[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>(default)");
+                    }
+                    else
+                    {
+                        additionalArgument = ParseExpression("Task.CompletedTask");
+                    }
+                }
+                else if (SetupMethod.ReturnType.EqualsByName(["System", "Threading", "Tasks", "ValueTask"]))
+                {
+                    if (SetupMethod.ReturnType is INamedTypeSymbol namedType && namedType.TypeArguments.Length == 1)
+                    {
+                        additionalArgument = ParseExpression($"ValueTask.FromResult<{namedType.TypeArguments[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>(default)");
+                    }
+                    else
+                    {
+                        additionalArgument = ParseExpression("ValueTask.CompletedTask");
+                    }
+                }
+                else
+                {
+                    // TODO: Support custom awaitable
+                    additionalArgument = ParseExpression("default");
+                }
+
+                objectCreationArguments = objectCreationArguments.AddArguments(Argument(additionalArgument)
+                    .WithNameColon(NameColon("defaultValue")));
+            }
+
+            var compiledSetupCreation = ObjectCreationExpression(returnObjectType)
+                    .WithArgumentList(objectCreationArguments);
 
             // var setup = new CompiledSetup(pretend, setupExpression, matchCall);
             statements.Add(LocalDeclarationStatement(VariableDeclaration(ParseTypeName("var"))

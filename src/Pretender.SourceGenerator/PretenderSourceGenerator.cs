@@ -1,6 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
+using System.Reflection.Metadata;
 using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -125,6 +127,7 @@ namespace Pretender.SourceGenerator
                         SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System")),
                         KnownBlocks.CompilerServicesUsing,
                         SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System.Linq.Expressions")),
+                        SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System.Threading.Tasks")),
                         KnownBlocks.PretenderUsing
                     );
 
@@ -168,20 +171,17 @@ namespace Pretender.SourceGenerator
 
                     return null;
                 })
-                .Where(i => i is not null);
+                .Where(i => i is not null)!
+                .GroupWith(c => c.Location, CreateEntryPointComparer.Instance);
 
-            context.RegisterSourceOutput(createCalls.Collect(), static (context, createCalls) =>
+            context.RegisterSourceOutput(createCalls, static (context, createCalls) =>
             {
-            var members = new MemberDeclarationSyntax[createCalls.Length];
+                var methodDeclaration = createCalls.Source.GetMethodDeclaration(createCalls.Index)
+                    .AddAttributeLists(createCalls.Elements.Select(i => SyntaxFactory.AttributeList(SyntaxFactory.SingletonSeparatedList(i.ToAttributeSyntax()))).ToArray());
 
-            for (var i = 0; i < createCalls.Length; i++)
-            {
-                members[i] = createCalls[i]!.GetMethodDeclaration(i);
-            }
-
-            var createClass = SyntaxFactory.ClassDeclaration("CreateInterceptors")
-                    .AddModifiers(SyntaxFactory.Token(SyntaxKind.FileKeyword), SyntaxFactory.Token(SyntaxKind.StaticKeyword))
-                    .AddMembers(members);
+                var createClass = SyntaxFactory.ClassDeclaration("CreateInterceptors")
+                        .AddModifiers(SyntaxFactory.Token(SyntaxKind.FileKeyword), SyntaxFactory.Token(SyntaxKind.StaticKeyword))
+                        .AddMembers(methodDeclaration);
 
                 var createNamespace = KnownBlocks.OurNamespace
                     .AddMembers(createClass)
@@ -191,7 +191,7 @@ namespace Pretender.SourceGenerator
                     .AddMembers(KnownBlocks.InterceptsLocationAttribute, createNamespace)
                     .NormalizeWhitespace();
 
-                context.AddSource("Pretender.Creates.g.cs", cu.GetText(Encoding.UTF8));
+                context.AddSource($"Pretender.Creates.{createCalls.Source.Operation.TargetMethod.ReturnType.ToPretendName()}.g.cs", cu.GetText(Encoding.UTF8));
             });
         }
     }

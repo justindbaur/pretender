@@ -87,6 +87,7 @@ namespace SourceGeneratorTests
         private static string GetTestMethodString(string source) => $$"""
             #nullable enable
             using System;
+            using System.Threading.Tasks;
             using Pretender;
 
             public class TestClass
@@ -104,6 +105,8 @@ namespace SourceGeneratorTests
             {
                 string? Greeting(string name, int hello);
                 void VoidMethod(string name);
+                Task AsyncMethod(string name);
+                Task<string> AsyncReturningMethod(string name);
             }
             """;
 

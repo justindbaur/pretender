@@ -4,6 +4,12 @@ namespace Pretender
 {
     public static class PretendSetupExtensions
     {
+        public static Pretend<T> Returns<T, TResult>(this IPretendSetup<T, Task<TResult>> pretendSetup, TResult result)
+        {
+            pretendSetup.SetBehavior(new ReturnValueBehavior(Task.FromResult(result)));
+            return pretendSetup.Pretend;
+        }
+
         public static Pretend<T> Returns<T, TResult>(this IPretendSetup<T, TResult> pretendSetup, TResult value)
             where T : class
         {

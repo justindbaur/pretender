@@ -17,20 +17,18 @@ public class UnitTest1
     }
 
     [Fact]
-    public void Test2()
+    public async Task Test2()
     {
-        var pretend = Pretend.For<IMyOtherInterface>();
+        var pretend = Pretend.For<IMyInterface>();
 
         pretend
-            .Setup(i => i.Greeting())
-            .Callback((ref CallInfo callInfo) =>
-            {
-                callInfo.Arguments[0] = 1;
-            });
+            .Setup(i => i.Greeting("Test"))
+            .Returns("Thing");
 
 
         var myOtherInterface = pretend.Create();
-        myOtherInterface.Greeting();
+        var value = await myOtherInterface.Greeting("Value");
+        Assert.Equal("Thing", value);
     }
 
         [Fact]
