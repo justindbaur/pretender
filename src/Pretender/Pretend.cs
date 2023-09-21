@@ -7,11 +7,11 @@ namespace Pretender;
 [DebuggerDisplay("{DebuggerToString(),nq}")]
 public class Pretend<T>
 {
-    private readonly List<IPretendSetup<T>> _setups;
+    private List<IPretendSetup<T>>? _setups;
+    private IPretendSetup<T>? _singleSetup;
 
     public Pretend()
     {
-        _setups = [];
     }
 
     // TODO: Create interceptor for returning the configured type
@@ -50,7 +50,21 @@ public class Pretend<T>
     // TODO: Make obsolete?
     public void AddSetup(IPretendSetup<T> setup)
     {
-        _setups.Add(setup);
+        if (_setups == null && _singleSetup == null)
+        {
+            _singleSetup = setup;
+        }
+        else if (_setups == null)
+        {
+            _setups ??= new List<IPretendSetup<T>>();
+            _setups.Add(_singleSetup!);
+            _setups.Add(setup);
+            _singleSetup = null;
+        }
+        else
+        {
+            _setups.Add(setup);
+        }
     }
 }
 

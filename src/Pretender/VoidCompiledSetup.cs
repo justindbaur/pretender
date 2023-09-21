@@ -1,6 +1,9 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
+
+using Pretender.Behaviors;
 
 namespace Pretender
 {
@@ -88,6 +91,7 @@ namespace Pretender
             }
 
             _behavior.Execute(ref callInfo);
+
             // This is where I could track nullability state and throw if the return value is null still
             callInfo.ReturnValue ??= _defaultValue;
         }
