@@ -2,11 +2,11 @@
 
 ## Benchmarks vs Competitors
 
-| Method          | Mean       | Error    | StdDev    | Gen0   | Allocated |
-|---------------- |-----------:|---------:|----------:|-------:|----------:|
-| MoqTest         | 3,626.4 ns | 71.90 ns | 160.81 ns | 0.6714 |    4249 B |
-| NSubstituteTest | 3,780.6 ns | 79.31 ns | 221.08 ns | 1.1597 |    7368 B |
-| PretenderTest   |   399.3 ns |  7.93 ns |   9.74 ns | 0.1044 |     656 B |
+| Method          | Mean         | Error      | StdDev       | Median       | Gen0   | Gen1   | Allocated |
+|---------------- |-------------:|-----------:|-------------:|-------------:|-------:|-------:|----------:|
+| MoqTest         | 46,155.49 ns | 919.804 ns | 1,999.579 ns | 45,122.63 ns | 1.3428 | 1.2207 |    8850 B |
+| NSubstituteTest |  4,011.88 ns |  76.549 ns |    85.084 ns |  4,004.60 ns | 1.2360 | 0.0381 |    7760 B |
+| PretenderTest   |     31.41 ns |   0.683 ns |     1.231 ns |     30.86 ns | 0.0268 |      - |     168 B |
 
 ## To-do list
 
