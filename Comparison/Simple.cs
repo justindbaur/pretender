@@ -14,35 +14,37 @@ namespace Comparison
     public class Simple
     {
         [Benchmark]
-        public ISimpleInterface MoqTest()
+        public string MoqTest()
         {
             var mock = new Moq.Mock<ISimpleInterface>();
 
-             mock.Setup(i => i.Foo("1"))
+             mock.Setup(i => i.Foo(Moq.It.IsAny<string>()))
                 .Returns("2");
 
-            return mock.Object;
+            var simpleInterface = mock.Object;
+            return simpleInterface.Foo("1");
         }
 
         [Benchmark]
-        public ISimpleInterface NSubstituteTest()
+        public string NSubstituteTest()
         {
             var substitute = NSubstitute.Substitute.For<ISimpleInterface>();
 
-            NSubstitute.SubstituteExtensions.Returns(substitute.Foo("1"), "2");
+            NSubstitute.SubstituteExtensions.Returns(substitute.Foo(NSubstitute.Arg.Any<string>()), "2");
 
-            return substitute;
+            return substitute.Foo("1");
         }
 
         [Benchmark]
-        public ISimpleInterface PretenderTest()
+        public string PretenderTest()
         {
             var pretend = Pretend.For<ISimpleInterface>();
 
-            pretend.Setup(i => i.Foo("1"))
+            pretend.Setup(i => i.Foo(It.IsAny<string>()))
                 .Returns("2");
 
-            return pretend.Create();
+            var simpleInterface = pretend.Create();
+            return simpleInterface.Foo("1");
         }
 
 

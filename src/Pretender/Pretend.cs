@@ -20,12 +20,12 @@ public class Pretend<T>
         throw new InvalidProgramException("This method should have been intercepted via a source generator.");
     }
 
-    public IPretendSetup<T, TReturn> Setup<TReturn>(Expression<Func<T, TReturn>> setupExpression)
+    public IPretendSetup<T, TReturn> Setup<TReturn>(Func<T, TReturn> setupExpression)
     {
         throw new InvalidProgramException("This method should have been intercepted via a source generator.");
     }
 
-    public IPretendSetup<T> Setup(Expression<Action<T>> setupExpression)
+    public IPretendSetup<T> Setup(Action<T> setupExpression)
     {
         throw new InvalidProgramException("This method should have been intercepted via a source generator.");
     }
@@ -35,9 +35,16 @@ public class Pretend<T>
     // TODO: Make this obsolete
     public void Handle(ref CallInfo callInfo)
     {
-        foreach (var setup in _setups)
+        if (_singleSetup != null)
         {
-            setup.Execute(ref callInfo);
+            _singleSetup.Execute(ref callInfo);
+        }
+        else if (_setups != null)
+        {
+            foreach (var setup in _setups)
+            {
+                setup.Execute(ref callInfo);
+            }
         }
     }
 

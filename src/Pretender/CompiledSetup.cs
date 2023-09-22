@@ -28,7 +28,6 @@ namespace Pretender
             _behavior = behavior;
         }
 
-        [DebuggerHidden]
         public void ExecuteCore(ref CallInfo callInfo)
         {
             // TODO: Mark as attempted?
@@ -44,12 +43,10 @@ namespace Pretender
 
 
     [EditorBrowsable(EditorBrowsableState.Never)]
-    public class VoidCompiledSetup<T>(Pretend<T> pretend, Expression<Action<T>> setupExpression, Matcher matcher)
+    public class VoidCompiledSetup<T>(Pretend<T> pretend, Action<T> setupExpression, Matcher matcher)
         : BaseCompiledSetup<T>(pretend, matcher), IPretendSetup<T>
     {
-        private readonly Expression<Action<T>> _setupExpression = setupExpression;
-
-        public LambdaExpression Expression => _setupExpression;
+        private readonly Action<T> _setupExpression = setupExpression;
 
         [DebuggerStepThrough]
         public void Execute(ref CallInfo callInfo)
@@ -68,15 +65,13 @@ namespace Pretender
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]
-    public class ReturningCompiledSetup<T, TResult>(Pretend<T> pretend, Expression<Func<T, TResult>> setupExpression, Matcher matcher, TResult defaultValue)
+    public class ReturningCompiledSetup<T, TResult>(Pretend<T> pretend, Func<T, TResult> setupExpression, Matcher matcher, TResult defaultValue)
         : BaseCompiledSetup<T>(pretend, matcher), IPretendSetup<T, TResult>
     {
-        private readonly Expression<Func<T, TResult>> _setupExpression = setupExpression;
+        private readonly Func<T, TResult> _setupExpression = setupExpression;
         private readonly TResult _defaultValue = defaultValue;
 
         public Type ReturnType => typeof(TResult);
-
-        public LambdaExpression Expression => _setupExpression;
 
         [DebuggerStepThrough]
         public void Execute(ref CallInfo callInfo)

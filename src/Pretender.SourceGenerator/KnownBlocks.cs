@@ -36,6 +36,9 @@ namespace Pretender.SourceGenerator
         public static UsingDirectiveSyntax PretenderUsing { get; }
             = SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("Pretender"));
 
+        public static UsingDirectiveSyntax PretenderInternalsUsing { get; }
+            = SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("Pretender.Internals"));
+
         public static UsingDirectiveSyntax CompilerServicesUsing { get; }
             = SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System.Runtime.CompilerServices"));
     }

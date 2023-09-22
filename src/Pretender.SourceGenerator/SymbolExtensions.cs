@@ -75,6 +75,17 @@ namespace Pretender.SourceGenerator
             return false;
         }
 
+        public static TypeSyntax AsUnknownTypeSyntax(this ITypeSymbol type)
+        {
+            var typeSyntax = ParseTypeName(type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
+            if (type.NullableAnnotation == NullableAnnotation.Annotated)
+            {
+                return NullableType(typeSyntax, Token(SyntaxKind.QuestionToken));
+            }
+
+            return typeSyntax;
+        }
+
         public static string ToPretendName(this ITypeSymbol symbol)
         {
             return $"Pretend{symbol.Name}{symbol.GetHashCode():X}";

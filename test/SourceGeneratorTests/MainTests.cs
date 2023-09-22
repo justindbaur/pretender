@@ -9,7 +9,7 @@ public class MainTests
             .Setup(i => i.AsyncMethod("John"));
 
         pretend
-            .Setup(i => i.AsyncReturningMethod(It.Is<string>(i => i == "Test")));
+            .Setup(i => i.AsyncReturningMethod(It.IsAny<string>()));
 
         var service = pretend.Create();
         var anotherService = pretend.Create();

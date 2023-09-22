@@ -128,7 +128,8 @@ namespace Pretender.SourceGenerator
                         KnownBlocks.CompilerServicesUsing,
                         SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System.Linq.Expressions")),
                         SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System.Threading.Tasks")),
-                        KnownBlocks.PretenderUsing
+                        KnownBlocks.PretenderUsing,
+                        KnownBlocks.PretenderInternalsUsing
                     );
 
                 var il = KnownBlocks.InterceptsLocationAttribute;

@@ -24,10 +24,12 @@ In no particular order
 - [ ] Property Support
 - [ ] Static Abstract (not support but we should fake an implementation)
 - [ ] More matchers
+  - [ ] Probably need a static matcher register :(
 - [x] Compiled Setup calls
   - [x] Intercept Setup calls
   - [x] Support Base MatcherAttribute
-  - [ ] Support Matcher arguments
+  - [ ] Support Matcher arguments and fallback if impossible
+  - [ ] Special case AnyMatcher
 - [x] Multiple uses of single type
 - [ ] Protected classes
 - [ ] Analyze all the things
