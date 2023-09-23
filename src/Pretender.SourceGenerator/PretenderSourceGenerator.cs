@@ -1,14 +1,11 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Reflection.Metadata;
 using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
-using Microsoft.CodeAnalysis.Text;
 
 namespace Pretender.SourceGenerator
 {
@@ -19,7 +16,7 @@ namespace Pretender.SourceGenerator
         {
             IncrementalValuesProvider<PretendEntrypoint> pretendsWithDiagnostics =
                  context.SyntaxProvider.CreateSyntaxProvider(
-                     predicate: static (node, _) =>
+                     predicate: static (node, token) =>
                      {
                          // Pretend.For<T>();
                          if (node is InvocationExpressionSyntax
@@ -46,6 +43,8 @@ namespace Pretender.SourceGenerator
                          // TODO: I think this is where I need to filter out false positives
                          if (operation.IsInvocationOperation(out var invocationOperation))
                          {
+                             token.ThrowIfCancellationRequested();
+
                              return PretendEntrypoint.FromMethodGeneric(invocationOperation!);
                          }
 
@@ -65,17 +64,13 @@ namespace Pretender.SourceGenerator
             });
 
             var pretends = pretendsWithDiagnostics
-                .Where(p => p!.Diagnostics.Count == 0);
+                .Where(p => p!.Diagnostics.Count == 0)
+                .GroupWith(s => s.InvocationLocation, PretendEntrypointComparer.TypeSymbol);
 
-            context.RegisterSourceOutput(pretends.Collect(), static (context, pretends) =>
+            context.RegisterSourceOutput(pretends, static (context, pretend) =>
             {
-                var uniquePretends = pretends.ToImmutableHashSet(PretendEntrypointComparer.TypeSymbol);
-                foreach (var uniquePretend in uniquePretends)
-                {
-                    var compilationUnit = uniquePretend.GetCompilationUnit();
-                    // TODO: Should have different name per class
-                    context.AddSource($"Pretender.Types.{uniquePretend.PretendName}.g.cs", compilationUnit.GetText(Encoding.UTF8));
-                }
+                var compilationUnit = pretend.Source.GetCompilationUnit(context.CancellationToken);
+                context.AddSource($"Pretender.Type.{pretend.Source.PretendName}.g.cs", compilationUnit.GetText(Encoding.UTF8));
             });
 
             var setupCallsWithDiagnostics =

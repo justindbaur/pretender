@@ -1,24 +1,19 @@
 namespace SourceGeneratorTests;
 
-public class MainTests
+public class MainTests : TestBase
 {
-    const string sourceToTest = $$"""
-        var pretend = Pretend.For<ISimpleInterface>();
-
-        pretend
-            .Setup(i => i.AsyncMethod("John"));
-
-        pretend
-            .Setup(i => i.AsyncReturningMethod(It.IsAny<string>()));
-
-        var service = pretend.Create();
-        var anotherService = pretend.Create();
-        """;
-
     [Fact]
     public async Task Test1()
     {
-        var (result, compilation) = await TestHelper.RunGeneratorAsync(sourceToTest);
+        var (result, compilation) = await RunGeneratorAsync($$"""
+            var pretendSimpleInterface = Pretend.For<ISimpleInterface>();
+
+            pretendSimpleInterface
+                .Setup(i => i.Foo("1", It.Is<int>(static i => i < 0)))
+                .Returns("4");
+
+            var simpleInterface = pretendSimpleInterface.Create();
+            """);
 
         Assert.Equal(3, result.GeneratedSources.Length);
 
@@ -31,18 +26,25 @@ public class MainTests
     }
 
     [Fact]
-    public void Test2()
+    public async Task Test2()
     {
-        var expression = TestHelper.GetSyntax($$"""
-            _pretend.Handle(callInfo);
+        var (result, compilation) = await RunGeneratorAsync($$"""
+            var pretendSimpleInterface = Pretend.For<SimpleAbstractClass>();
+
+            pretendSimpleInterface
+                .Setup(i => i.Foo("1", 2))
+                .Returns("Hello");
+
+            var simpleInterface = pretendSimpleInterface.Create();
             """);
 
-        Console.WriteLine(expression);
-    }
+        Assert.Equal(3, result.GeneratedSources.Length);
 
-    [Fact]
-    public void Test3()
-    {
-        var compilation = TestHelper.GetCompilation(sourceToTest);
+        var source1 = result.GeneratedSources[0];
+        var text1 = source1.SourceText.ToString();
+        var source2 = result.GeneratedSources[1];
+        var text2 = source2.SourceText.ToString();
+        var source3 = result.GeneratedSources[2];
+        var text3 = source3.SourceText.ToString();
     }
 }

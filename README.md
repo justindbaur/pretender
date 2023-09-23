@@ -21,7 +21,8 @@ In no particular order
 - [ ] Classes (maybe already do)
 - [x] Benchmark vs NSub & Moq
   - [ ] A lot more benchmarks
-- [ ] Property Support
+- [x] Property Support
+  - [ ] Property setter
 - [ ] Static Abstract (not support but we should fake an implementation)
 - [ ] More matchers
   - [ ] Probably need a static matcher register :(
@@ -29,26 +30,28 @@ In no particular order
   - [x] Intercept Setup calls
   - [x] Support Base MatcherAttribute
   - [ ] Support Matcher arguments and fallback if impossible
-  - [ ] Special case AnyMatcher
+  - [x] Special case AnyMatcher
 - [x] Multiple uses of single type
 - [ ] Protected classes
 - [ ] Analyze all the things
-- [ ] Constructor support
+- [x] Constructor support
+  - [ ] All Create() to take constructor arguments & analyze them for likely match
 - [ ] Debugger story
   - [ ] We do people want to step into
   - [ ] What objects will they inspect and how can it be helpful
 - [ ] Documentation
 - [ ] Make Pretend Implementation castable to something you can get the Pretend out of
 - [ ] Check how many times a call has been made
-- [ ] out parameters
+- [x] out parameters
 - [x] Make our own delegate for matcher calls
 - [ ] Multiple method overloads
 - [ ] Special case known good "Fake" implementations
   - [ ] EphemeralDataProtectionProvider
   - [ ] TimeProvider
   - [ ] TestLogger
-- [ ] Maybe not even use expressions in Setup
+- [x] Maybe not even use expressions in Setup
 - [ ] Obsolete public types that exist only for SourceGen
+  - [ ] And move to Pretender.Internals namespace
   - [ ] pragma disable obsolete warnings
 - [ ] Compiled Behaviors?
 - [ ] More Behaviors

@@ -1,6 +1,6 @@
 ﻿namespace Pretender.Matchers
 {
-    public class AnonymousMatcher<T> : IMatcher
+    public readonly struct AnonymousMatcher<T>
     {
         private readonly Func<T?, bool> _matcher;
 
@@ -9,9 +9,9 @@
             _matcher = matcher;
         }
 
-        public bool Matches(object? argument)
+        public bool Matches(T? argument)
         {
-            return _matcher((T?)argument);
+            return _matcher(argument);
         }
     }
 }

@@ -22,30 +22,37 @@ namespace Pretender.SourceGenerator
 
             var pretendType = ((INamedTypeSymbol)invocationOperation.Type!).TypeArguments[0];
 
-            var setupInvocation = SimplifyOperation(setupExpressionArg.Value, pretendType);
+            var setupMethod = SimplifyOperation(setupExpressionArg.Value, pretendType);
 
             PretendType = pretendType;
 
-            if (setupInvocation is null)
+            if (setupMethod == default)
             {
-                // TODO: Better Error diagnostic
-                Diagnostics.Add(Diagnostic.Create(
-                    DiagnosticDescriptors.InvalidSetupArgument,
-                    invocationOperation.Arguments[0].Syntax.GetLocation()
-                    ));
+                // Make sure one diagnostic at least is made about the failure to find
+                // the method symbol
+                if (Diagnostics.Count == 0)
+                {
+                    // TODO: Better Error diagnostic
+                    Diagnostics.Add(Diagnostic.Create(
+                        DiagnosticDescriptors.InvalidSetupArgument,
+                        invocationOperation.Arguments[0].Syntax.GetLocation(),
+                        "ones we can't simplify"
+                        ));
+                }
                 return;
             }
 
-            var setupMethod = setupInvocation.TargetMethod;
+            SetupMethod = setupMethod.Method;
 
-            SetupMethod = setupMethod;
-
-            foreach (var argument in setupInvocation.Arguments)
+            if (setupMethod.Arguments != default)
             {
-                ValidateArgument(argument);
+                foreach (var argument in setupMethod.Arguments)
+                {
+                    ValidateArgument(argument);
+                }
             }
 
-            Arguments = setupInvocation.Arguments;
+            Arguments = setupMethod.Arguments;
         }
 
         public IInvocationOperation OriginalInvocation { get; }
@@ -73,22 +80,47 @@ namespace Pretender.SourceGenerator
 
             // Match method info first
 
-            for (var i = 0; i < Arguments.Length; i++)
+            if (Arguments != default)
             {
-                var argument = Arguments[i];
-                var setupArgument = new SetupArgument(argument, i);
+                var needsCapturer = new bool[Arguments.Length];
 
-                if (setupArgument.IsLiteral)
+                for (var i = 0; i < Arguments.Length; i++)
                 {
-                    matchStatements.Add(setupArgument.EmitArgumentAccessor());
-                    matchStatements.Add(setupArgument.EmitLiteralIfCheck());
+                    var argument = Arguments[i];
+                    var setupArgument = new SetupArgument(argument, i);
+
+                    if (setupArgument.IsLiteral)
+                    {
+                        matchStatements.Add(setupArgument.EmitArgumentAccessor());
+                        matchStatements.Add(setupArgument.EmitLiteralIfCheck());
+                    }
+                    else if (setupArgument.IsInvocation)
+                    {
+                        if (setupArgument.TryEmitInvocationStatements(out var invocationStatements))
+                        {
+                            matchStatements.AddRange(invocationStatements);
+                            continue;
+                        }
+
+                        // Need a capturer
+                        needsCapturer[i] = true;
+                    }
+                    else
+                    {
+                        throw new NotImplementedException($"We have not implemented arguments of kind '{argument.Kind}', please file an issue.");
+                    }
+                    // TODO: More Argument types
                 }
-                else if (setupArgument.IsInvocation)
+
+                if (needsCapturer.Any(i => i))
                 {
-                    setupArgument.EmitInvocationStatements(out var invocationStatements);
-                    matchStatements.AddRange(invocationStatements);
+                    // Generate type
+                    // Create argument capturer
+                    // Create static matcher listener
+                    // call method
+                    // close listener
+                    // Read arguments
                 }
-                // TODO: More Argument types
             }
 
             ArgumentSyntax matcherArgument;
@@ -132,6 +164,11 @@ namespace Pretender.SourceGenerator
                 {
                     Argument(IdentifierName("pretend")),
                     Argument(IdentifierName("setupExpression")),
+                    Argument(MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName(PretendType.ToPretendName()),
+                        IdentifierName(SetupMethod.ToMethodInfoCacheName())
+                        )),
                     matcherArgument
                 }));
 
@@ -234,7 +271,8 @@ namespace Pretender.SourceGenerator
                 // TODO: Make its own descriptor and offer fixer
                 Diagnostics.Add(Diagnostic.Create(
                     DiagnosticDescriptors.InvalidSetupArgument,
-                    operation.Syntax.GetLocation()
+                    operation.Syntax.GetLocation(),
+                    "Instance invocation"
                     ));
                 return false;
             }
@@ -243,7 +281,8 @@ namespace Pretender.SourceGenerator
             {
                 Diagnostics.Add(Diagnostic.Create(
                     DiagnosticDescriptors.InvalidSetupArgument,
-                    operation.Syntax.GetLocation()
+                    operation.Syntax.GetLocation(),
+                    "invocation where the method is not static."
                     ));
                 return false;
             }
@@ -261,7 +300,8 @@ namespace Pretender.SourceGenerator
                 // TODO: Make this be it's own descriptor
                 Diagnostics.Add(Diagnostic.Create(
                     DiagnosticDescriptors.InvalidSetupArgument,
-                    operation.Syntax.GetLocation()
+                    operation.Syntax.GetLocation(),
+                    "Static invocation with no matcher attribute on method"
                     ));
                 return false;
             }
@@ -271,31 +311,31 @@ namespace Pretender.SourceGenerator
             return true;
         }
 
-        private static IInvocationOperation? SimplifyBlockOperation(IBlockOperation operation, ITypeSymbol pretendType)
+        private (IMethodSymbol Method, ImmutableArray<IArgumentOperation> Arguments) SimplifyBlockOperation(IBlockOperation operation, ITypeSymbol pretendType)
         {
             foreach (var childOperation in operation.Operations)
             {
                 var method = SimplifyOperation(childOperation, pretendType);
-                if (method != null)
+                if (method != default)
                 {
                     return method;
                 }
             }
 
-            return null;
+            return default;
         }
 
-        private static IInvocationOperation? SimplifyReturnOperation(IReturnOperation operation, ITypeSymbol pretendType)
+        private (IMethodSymbol Method, ImmutableArray<IArgumentOperation> Arguments) SimplifyReturnOperation(IReturnOperation operation, ITypeSymbol pretendType)
         {
             return operation.ReturnedValue switch
             {
                 not null => SimplifyOperation(operation.ReturnedValue, pretendType),
                 // If there is not returned value, this is a dead end.
-                _ => null,
+                _ => default,
             };
         }
 
-        private static IInvocationOperation? SimplifyOperation(IOperation operation, ITypeSymbol pretendType)
+        private (IMethodSymbol Method, ImmutableArray<IArgumentOperation> Arguments) SimplifyOperation(IOperation operation, ITypeSymbol pretendType)
         {
             // TODO: Support more operations
             return operation.Kind switch
@@ -305,13 +345,30 @@ namespace Pretender.SourceGenerator
                 OperationKind.Block => SimplifyBlockOperation((IBlockOperation)operation, pretendType),
                 OperationKind.AnonymousFunction => SimplifyOperation(((IAnonymousFunctionOperation)operation).Body, pretendType),
                 OperationKind.Invocation => TryMethod((IInvocationOperation)operation, pretendType),
+                // ExpressionStatement is probably a dead path now but who cares
                 OperationKind.ExpressionStatement => SimplifyOperation(((IExpressionStatementOperation)operation).Operation, pretendType),
                 OperationKind.DelegateCreation => SimplifyOperation(((IDelegateCreationOperation)operation).Target, pretendType),
-                _ => null,
+                // TODO: Do something for SetupSet to get the set method instead
+                OperationKind.PropertyReference => TryProperty((IPropertyReferenceOperation)operation),
+                _ => default,
             };
         }
 
-        private static IInvocationOperation? TryMethod(IInvocationOperation operation, ITypeSymbol pretendType)
+        private static (IMethodSymbol Method, ImmutableArray<IArgumentOperation> Arguments) TryProperty(IPropertyReferenceOperation propertyReference)
+        {
+            var getMethod = propertyReference.Property.GetMethod;
+
+            // TODO: Validate the get method exists on the type we are pretending
+            // and that the return type it's returning is the expected one
+            if (getMethod != null)
+            {
+                return (getMethod, []);
+            }
+
+            return default;
+        }
+
+        private (IMethodSymbol Method, ImmutableArray<IArgumentOperation> Arguments) TryMethod(IInvocationOperation operation, ITypeSymbol pretendType)
         {
             var instance = operation.Instance;
             var method = operation.TargetMethod;
@@ -319,14 +376,15 @@ namespace Pretender.SourceGenerator
             // It should have an instance because it should be called from the pretend from the Func<,>/Action<>
             if (instance == null)
             {
-                return null;
+                // TODO: Add diagnostic
+                return default;
             }
 
             if (instance is IParameterReferenceOperation parameter)
             {
                 if (!SymbolEqualityComparer.Default.Equals(parameter.Type, pretendType))
                 {
-                    return null;
+                    return default;
                 }
             }
             // TODO: Should we allow any other instance operation types?
@@ -338,10 +396,10 @@ namespace Pretender.SourceGenerator
             {
                 // This is not a method that exists on the pretend type
                 // TODO: We could inspect the method body further
-                return null;
+                return default;
             }
 
-            return operation;
+            return (operation.TargetMethod, operation.Arguments);
         }
     }
 }

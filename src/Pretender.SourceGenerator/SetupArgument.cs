@@ -39,39 +39,66 @@ namespace Pretender.SourceGenerator
                     .WithInitializer(EqualsValueClause(argumentGetter))));
         }
 
-        public void EmitInvocationStatements(out StatementSyntax[] statements)
+        public bool TryEmitInvocationStatements(out StatementSyntax[] statements)
         {
             Debug.Assert(IsInvocation, "Should have been asserted already.");
             var invocationOperation = (IInvocationOperation)ArgumentOperation.Value;
             if (TryGetMatcherAttributeType(invocationOperation, out var matcherType))
             {
-                
-
                 // AnyMatcher
                 if (matcherType.EqualsByName(["Pretender", "Matchers", "AnyMatcher"]))
                 {
                     statements = [];
-                    return;
+                    return true;
                 }
 
-                var argumentList = invocationOperation.Arguments.Select(arg =>
+                var arguments = new ArgumentSyntax[invocationOperation.Arguments.Length];
+                bool allArgumentsSafe = true;
+
+                for ( int i = 0; i < arguments.Length; i++)
                 {
+                    var arg = invocationOperation.Arguments[i];
                     if (arg.Value is ILiteralOperation literalOperation)
                     {
-                        return Argument(literalOperation.ToLiteralExpression());
+                        arguments[i] = Argument(literalOperation.ToLiteralExpression());
                     }
                     else if (arg.Value is IDelegateCreationOperation delegateCreation)
                     {
-                        // TODO: Do something with .Target
-                        var anonymousFunction = (IAnonymousFunctionOperation)delegateCreation.Target;
-                        return Argument(LiteralExpression(SyntaxKind.NullLiteralExpression));
+
+                        if (delegateCreation.Target is IAnonymousFunctionOperation anonymousFunctionOperation)
+                        {
+                            if (anonymousFunctionOperation.Symbol.IsStatic) // This isn't enough either though, they could call a static method that only exists in their context
+                            {
+                                // If it's guaranteed to be static, we can just rewrite it in our code
+                                arguments[i] = Argument(ParseExpression(delegateCreation.Syntax.GetText().ToString()));
+                            }
+                            else if (false) // Is non-scope capturing
+                            {
+                                // This is a lot more work but also very powerful in terms of speed
+                                allArgumentsSafe = false;
+                            }
+                            else
+                            {
+                                // We need a static matcher
+                                allArgumentsSafe = false;
+                            }
+                        }
+                        else
+                        {
+                            allArgumentsSafe = false;
+                        }
                     }
                     else
                     {
-                        throw new NotImplementedException("We don't support this operation type yet.");
+                        allArgumentsSafe = false;
                     }
-                });
+                }
 
+                if (!allArgumentsSafe)
+                {
+                    statements = [];
+                    return false;
+                }
 
                 statements = new StatementSyntax[3];
                 statements[0] = EmitArgumentAccessor();
@@ -83,7 +110,7 @@ namespace Pretender.SourceGenerator
                     VariableDeclaration(ParseTypeName("var"))
                         .AddVariables(VariableDeclarator(matcherLocalName)
                             .WithInitializer(EqualsValueClause(ObjectCreationExpression(ParseTypeName(matcherType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)))
-                                .AddArgumentListArguments(argumentList.ToArray()))
+                                .AddArgumentListArguments(arguments))
                             )
                         )
                     );
@@ -101,11 +128,14 @@ namespace Pretender.SourceGenerator
                         .AddArgumentListArguments(Argument(IdentifierName(ArgumentLocalName)))
                     )
                 );
+
+                return true;
             }
             else
             {
                 // TODO: Setup static listener
                 statements = [];
+                return false;
             }
         }
 

@@ -1,6 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -44,52 +48,117 @@ namespace Pretender.SourceGenerator
         public string PretendName { get; }
         public List<Diagnostic> Diagnostics { get; } = new List<Diagnostic>();
 
-        public CompilationUnitSyntax GetCompilationUnit()
+        public CompilationUnitSyntax GetCompilationUnit(CancellationToken token)
         {
-            var fieldAssignment = ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, IdentifierName("_pretend"), IdentifierName("pretend")));
+            var pretendFieldAssignment = ExpressionStatement(
+                AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
+                    IdentifierName("_pretend"),
+                    IdentifierName("pretend")
+                )
+            );
 
-            var constructor = ConstructorDeclaration(PretendName)
-                .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
-                .WithParameterList(ParameterList(SingletonSeparatedList(CreateConstructorParameter())))
-                .WithBody(Block(fieldAssignment))
-                .WithInheritDoc();
+            var methodSymbols = new List<(IMethodSymbol Method, string Name)>();
 
-            var groupedMethods = TypeToPretend.GetGroupedMethods();
+            token.ThrowIfCancellationRequested();
 
-            var staticMethodInfoCache = new List<FieldDeclarationSyntax>();
-            var methodDeclarations = new List<MethodDeclarationSyntax>();
-            foreach (var groupedMethod in groupedMethods.Select(m => m.GetEquivalentMethodSignatures()))
+            var typeMembers = TypeToPretend.GetMembers();
+
+            foreach (var member in typeMembers)
             {
-                var methods = groupedMethod.ToList();
-                for (int i = 0; i < methods.Count; i++)
+                if (member is IMethodSymbol methodSymbol)
                 {
-                    var method = methods[i];
-                    staticMethodInfoCache.Add(GetStaticMethodCacheField(method.MethodSymbol, i));
-                    methodDeclarations.Add(CreateMethodBody(method.MethodSymbol, method.MethodDeclaration, i));
+                    methodSymbols.Add((methodSymbol, methodSymbol.Name));
+                }
+                else if (member is IPropertySymbol propertySymbol)
+                {
+                    // Property symbol is taken care of through IMethodSymbol
+                }
+                else if (member is IFieldSymbol fieldSymbol)
+                {
+                    // TODO: Do I need to do anything
+                    // abstract fields?
+                }
+                else
+                {
+                    throw new NotImplementedException($"We don't support {member.Kind} quite yet, please file an issue.");
                 }
             }
 
-            // TODO: Support properties
-            var properties = TypeToPretend.GetMembers()
-                .OfType<IPropertySymbol>();
+            token.ThrowIfCancellationRequested();
+
+            var methodInfoFields = new List<FieldDeclarationSyntax>();
+
+            // Find the shortest path to uniquify all method info getters
+            var groupedMethodSymbols = methodSymbols
+                .Where(m => m.Method.MethodKind == MethodKind.Ordinary)
+                .GroupBy(m => m.Name);
+
+            foreach (var groupedMethodSymbol in groupedMethodSymbols)
+            {
+                var methods = groupedMethodSymbol.ToArray();
+
+                if (methods.Length == 1)
+                {
+                    var (method, name) = methods[0];
+                    // No one else has this name
+                    ExpressionSyntax expression = CreateSimpleMethodInfoGetter(name, "GetMethod");
+                    methodInfoFields.Add(CreateMethodInfoField(method, expression));
+                    continue;
+                }
+
+                // We have to do more work to fine the unique method, I also know it's not a property anymore
+                // because properties have a unique name
+                var groupedMethodParameterLengths = groupedMethodSymbol
+                    .GroupBy(m => m.Method.Parameters.Length);
+
+                foreach (var groupedMethodParameterLength in groupedMethodParameterLengths)
+                {
+                    methods = groupedMethodParameterLength.ToArray();
+
+                    if (methods.Length == 1)
+                    {
+                        var method = methods[0];
+                        // This method is unique from it's other matches via it's parameter length
+                        // TODO: Do this
+                        continue;
+                    }
+                }
+
+                // TODO: Match all type parameters
+                throw new NotImplementedException($"Could not find a unique way to identify method '{groupedMethodSymbol.Key}'");
+            }
+
+            var propertyMethodSymbols = methodSymbols
+                .Where(m => m.Method.MethodKind == MethodKind.PropertyGet
+                    || m.Method.MethodKind == MethodKind.PropertySet);
+
+            foreach (var (method, name) in propertyMethodSymbols)
+            {
+                var methodName = method.MethodKind == MethodKind.PropertyGet
+                    ? "GetMethod"
+                    : "SetMethod";
+                ExpressionSyntax expression = CreateSimplePropertyMethodInfoGetter(method.AssociatedSymbol!.Name, methodName);
+                methodInfoFields.Add(CreateMethodInfoField(method, expression));
+            }
 
             var instanceField = FieldDeclaration(VariableDeclaration(GetGenericPretendType(), SingletonSeparatedList(VariableDeclarator(Identifier("_pretend")))))
                 .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword), Token(SyntaxKind.ReadOnlyKeyword)))
                 .WithTrailingTrivia(CarriageReturnLineFeed);
 
-            var members = new List<MemberDeclarationSyntax>();
-            members.AddRange(staticMethodInfoCache);
-            members.Add(instanceField);
-            members.Add(constructor);
-            members.AddRange(methodDeclarations);
+            methodInfoFields.Add(instanceField);
+
+            var classDeclaration = TypeToPretend.ScaffoldImplementation(new ScaffoldTypeOptions
+            {
+                CustomFields = methodInfoFields.ToImmutableArray(),
+                AddMethodBody = CreateMethodBody,
+                CustomizeConstructor = () => (CreateConstructorParameter(), [pretendFieldAssignment]),
+            });
 
             // TODO: Add properties
 
             // TODO: Generate debugger display
-            var classDeclaration = ClassDeclaration(PretendName)
-                .WithModifiers(TokenList(Token(SyntaxKind.InternalKeyword)))
-                .WithBaseList(BaseList(SingletonSeparatedList<BaseTypeSyntax>(SimpleBaseType(ParseTypeName(TypeToPretend.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat))))))
-                .WithMembers(List(members));
+            classDeclaration = classDeclaration
+                .WithModifiers(TokenList(Token(SyntaxKind.InternalKeyword)));
 
             SyntaxTriviaList leadingTrivia = TriviaList(
                 Comment("// <auto-generated/>"),
@@ -100,6 +169,50 @@ namespace Pretender.SourceGenerator
                 .AddMembers(classDeclaration.WithLeadingTrivia(leadingTrivia))
                 .WithLeadingTrivia(leadingTrivia)
                 .NormalizeWhitespace();
+        }
+
+        private static FieldDeclarationSyntax CreateMethodInfoField(IMethodSymbol method, ExpressionSyntax expressionSyntax)
+        {
+            // public static readonly MethodInfo_name_4B2 = <expression>!;
+            return FieldDeclaration(VariableDeclaration(ParseTypeName("global::System.Reflection.MethodInfo")))
+                .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword), Token(SyntaxKind.ReadOnlyKeyword))
+                .AddDeclarationVariables(VariableDeclarator(Identifier(method.ToMethodInfoCacheName()))
+                    .WithInitializer(EqualsValueClause(
+                        PostfixUnaryExpression(SyntaxKind.SuppressNullableWarningExpression, expressionSyntax)))
+                );
+        }
+
+        private InvocationExpressionSyntax CreateSimpleMethodInfoGetter(string name, string afterTypeOfMethod)
+        {
+
+            return InvocationExpression(MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                TypeOfExpression(ParseTypeName(TypeToPretend.ToFullDisplayString())),
+                IdentifierName(afterTypeOfMethod)))
+                .AddArgumentListArguments(Argument(NameOfExpression(name)));
+        }
+
+        private MemberAccessExpressionSyntax CreateSimplePropertyMethodInfoGetter(string propertyName, string type)
+        {
+            return MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                CreateSimpleMethodInfoGetter(propertyName, "GetProperty"),
+                IdentifierName(type));
+        }
+
+        private static InvocationExpressionSyntax NameOfExpression(string identifier)
+        {
+            var text = SyntaxFacts.GetText(SyntaxKind.NameOfKeyword);
+
+            var identifierSyntax = Identifier(default,
+                SyntaxKind.NameOfKeyword,
+                text,
+                text,
+                default);
+
+            return InvocationExpression(
+                IdentifierName(identifierSyntax),
+                ArgumentList(SingletonSeparatedList(Argument(IdentifierName(identifier)))));
         }
 
         private ParameterSyntax CreateConstructorParameter()
@@ -125,11 +238,9 @@ namespace Pretender.SourceGenerator
                         .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(ParseExpression($"nameof({method.Name})"))))))));
         }
 
-        private MethodDeclarationSyntax CreateMethodBody(IMethodSymbol method, MethodDeclarationSyntax methodDeclaration, int index)
+        private BlockSyntax CreateMethodBody(IMethodSymbol method)
         {
             var methodBodyStatements = new List<StatementSyntax>();
-
-
 
             var collectionExpression = CollectionExpression()
                 .AddElements(method.Parameters.Select(p =>
@@ -156,7 +267,7 @@ namespace Pretender.SourceGenerator
                 VariableDeclaration(IdentifierName("var"))
                     .AddVariables(VariableDeclarator(Identifier("callInfo"))
                         .WithInitializer(EqualsValueClause(ObjectCreationExpression(ParseTypeName("global::Pretender.CallInfo"))
-                            .AddArgumentListArguments(Argument(IdentifierName($"__methodInfo_{method.Name}_{index}")), Argument(IdentifierName("arguments")))))));
+                            .AddArgumentListArguments(Argument(IdentifierName(method.ToMethodInfoCacheName())), Argument(IdentifierName("arguments")))))));
 
             methodBodyStatements.Add(callInfoCreation);
 
@@ -169,6 +280,28 @@ namespace Pretender.SourceGenerator
 
             methodBodyStatements.Add(handleCall);
 
+            // Set ref and out parameters
+            // TODO: Do I need to do refs?
+            var refAndOutParameters = method.Parameters
+                .Where(p => p.RefKind == RefKind.Ref || p.RefKind == RefKind.Out);
+
+            foreach (var p in refAndOutParameters)
+            {
+                // assign them to the values from arguments
+                var refOrOutAssignment = AssignmentExpression(
+                    SyntaxKind.SimpleAssignmentExpression,
+                    IdentifierName(p.Name),
+                    ElementAccessExpression(
+                        IdentifierName("arguments"),
+                        BracketedArgumentList(SingletonSeparatedList(
+                            Argument(LiteralExpression(
+                                SyntaxKind.NumericLiteralExpression,
+                                Literal(p.Ordinal))))))
+                );
+
+                methodBodyStatements.Add(ExpressionStatement(refOrOutAssignment));
+            }
+
             if (method.ReturnType.SpecialType != SpecialType.System_Void)
             {
                 var returnStatement = ReturnStatement(CastExpression(
@@ -178,10 +311,7 @@ namespace Pretender.SourceGenerator
                 methodBodyStatements.Add(returnStatement);
             }
 
-            // TODO: Assign out parameters
-
-            return methodDeclaration
-                .WithBody(Block(methodBodyStatements));
+            return Block(methodBodyStatements);
         }
     }
 }
