@@ -7,7 +7,7 @@ namespace Pretender.Internals
     public static class Cache
     {
         [EditorBrowsable(EditorBrowsableState.Never)]
-        public static readonly Matcher NoOpMatcher = delegate (CallInfo callInfo)
+        public static readonly Matcher NoOpMatcher = delegate (CallInfo callInfo, object? target)
         {
             return true;
         };

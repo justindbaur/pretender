@@ -21,8 +21,10 @@ public class UnitTest1
     {
         var pretend = Pretend.For<IMyInterface>();
 
+        var local = "Value";
+
         pretend
-            .Setup(i => i.Greeting("Test"))
+            .Setup(i => i.Greeting(local))
             .Returns("Thing");
 
 

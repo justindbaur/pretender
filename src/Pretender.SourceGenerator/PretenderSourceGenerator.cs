@@ -107,7 +107,7 @@ namespace Pretender.SourceGenerator
                 for (var i = 0; i < setups.Length; i++)
                 {
                     var setup = setups[i];
-                    members.Add(setup!.GetMethodDeclaration(i));
+                    members.AddRange(setup!.GetMembers(i));
                 }
 
                 var classDeclaration = SyntaxFactory.ClassDeclaration("SetupInterceptors")

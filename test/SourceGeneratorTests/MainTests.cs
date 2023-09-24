@@ -8,8 +8,15 @@ public class MainTests : TestBase
         var (result, compilation) = await RunGeneratorAsync($$"""
             var pretendSimpleInterface = Pretend.For<ISimpleInterface>();
 
+            var local = "1";
+            var local2 = 2;
+
             pretendSimpleInterface
-                .Setup(i => i.Foo("1", It.Is<int>(static i => i < 0)))
+                .Setup(i => i.Foo(local, It.Is<int>(i =>
+                {
+                    var myValue = 0;
+                    return i < local2 + myValue;
+                })))
                 .Returns("4");
 
             var simpleInterface = pretendSimpleInterface.Create();

@@ -46,23 +46,29 @@ namespace Pretender.SourceGenerator
 
             if (setupMethod.Arguments != default)
             {
-                foreach (var argument in setupMethod.Arguments)
+                var setupArguments = new SetupArgument[setupMethod.Arguments.Length];
+                for (int i = 0; i < setupArguments.Length; i++)
                 {
-                    ValidateArgument(argument);
+                    setupArguments[i] = new SetupArgument(setupMethod.Arguments[i], i, Diagnostics);
                 }
+                Arguments = setupArguments.ToImmutableArray();
             }
-
-            Arguments = setupMethod.Arguments;
+            else
+            {
+                Arguments = [];
+            }
         }
 
         public IInvocationOperation OriginalInvocation { get; }
         public ITypeSymbol PretendType { get; }
         public List<Diagnostic> Diagnostics { get; } = new List<Diagnostic>();
         public IMethodSymbol SetupMethod { get; } = null!;
-        public ImmutableArray<IArgumentOperation> Arguments { get; }
+        public ImmutableArray<SetupArgument> Arguments { get; }
 
-        public MethodDeclarationSyntax GetMethodDeclaration(int index)
+        public MemberDeclarationSyntax[] GetMembers(int index)
         {
+            var allMembers = new List<MemberDeclarationSyntax>();
+
             var statements = new List<StatementSyntax>();
 
             var returnTypeString = SetupMethod.ReturnsVoid
@@ -82,44 +88,66 @@ namespace Pretender.SourceGenerator
 
             if (Arguments != default)
             {
-                var needsCapturer = new bool[Arguments.Length];
+                var distinctLocals = Arguments
+                    .SelectMany(s => s.RequiredLocals)
+                    .Select(l => l.Local)
+                    .Distinct(SymbolEqualityComparer.Default)
+                    .Cast<ILocalSymbol>();
+
+                if (false)
+                {
+                    var methods = distinctLocals.Select(l => MethodDeclaration(
+                        l.Type.AsUnknownTypeSyntax(),
+                        l.Name
+                        )
+                        .AddModifiers(Token(SyntaxKind.InternalKeyword), Token(SyntaxKind.ExternKeyword), Token(SyntaxKind.StaticKeyword))
+                        .AddParameterListParameters(Parameter(Identifier("target")).WithType(ParseTypeName("object?")))
+                        .AddAttributeLists(AttributeList(SingletonSeparatedList(
+                            Attribute(IdentifierName("UnsafeAccessor"))
+                                .AddArgumentListArguments(AttributeArgument(MemberAccessExpression(
+                                    SyntaxKind.SimpleMemberAccessExpression,
+                                    IdentifierName("UnsafeAccessorKind"),
+                                    IdentifierName("Field")
+                                )))))
+                    )
+                        .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+
+                    // We have captured locals
+                    // make a static class for 
+                    var accessorClass = ClassDeclaration($"Setup{index}Accessor")
+                        .AddModifiers(Token(SyntaxKind.InternalKeyword), Token(SyntaxKind.StaticKeyword))
+                        .AddMembers(methods.ToArray());
+
+                    allMembers.Add(accessorClass);
+                }
 
                 for (var i = 0; i < Arguments.Length; i++)
                 {
                     var argument = Arguments[i];
-                    var setupArgument = new SetupArgument(argument, i);
 
-                    if (setupArgument.IsLiteral)
+                    if (argument.IsLiteral)
                     {
-                        matchStatements.Add(setupArgument.EmitArgumentAccessor());
-                        matchStatements.Add(setupArgument.EmitLiteralIfCheck());
+                        matchStatements.Add(argument.EmitArgumentAccessor());
+                        matchStatements.Add(argument.EmitIfCheck(((ILiteralOperation)argument.ArgumentOperation.Value).ToLiteralExpression()));
                     }
-                    else if (setupArgument.IsInvocation)
+                    else if (argument.IsInvocation)
                     {
-                        if (setupArgument.TryEmitInvocationStatements(out var invocationStatements))
+                        if (argument.TryEmitInvocationStatements(out var invocationStatements))
                         {
                             matchStatements.AddRange(invocationStatements);
                             continue;
                         }
-
-                        // Need a capturer
-                        needsCapturer[i] = true;
+                    }
+                    else if (argument.IsLocalReference)
+                    {
+                        matchStatements.AddRange(argument.EmitLocalIfCheck(index));
                     }
                     else
                     {
-                        throw new NotImplementedException($"We have not implemented arguments of kind '{argument.Kind}', please file an issue.");
+                        // TODO: Have this but also have a lot more support for different arguments
+                        // throw new NotImplementedException($"We have not implemented arguments of kind '{argument.Kind}', please file an issue.");
                     }
                     // TODO: More Argument types
-                }
-
-                if (needsCapturer.Any(i => i))
-                {
-                    // Generate type
-                    // Create argument capturer
-                    // Create static matcher listener
-                    // call method
-                    // close listener
-                    // Read arguments
                 }
             }
 
@@ -138,14 +166,17 @@ namespace Pretender.SourceGenerator
                 matchStatements.Add(ReturnStatement(LiteralExpression(SyntaxKind.TrueLiteralExpression)));
 
                 /*
-                 * Matcher matchCall = static (CallInfo callInfo) =>
+                 * Matcher matchCall = static (callInfo, target) =>
                  * {
                  *     ...matching calls...
                  *     return true;
                  * }
                  */
                 var matcherDelegate = ParenthesizedLambdaExpression(
-                ParameterList(SingletonSeparatedList(Parameter(Identifier("callInfo")))),
+                ParameterList(SeparatedList([
+                        Parameter(Identifier("callInfo")),
+                        Parameter(Identifier("target"))
+                    ])),
                 Block(matchStatements))
                     .WithModifiers(TokenList(Token(SyntaxKind.StaticKeyword)));
 
@@ -169,7 +200,12 @@ namespace Pretender.SourceGenerator
                         IdentifierName(PretendType.ToPretendName()),
                         IdentifierName(SetupMethod.ToMethodInfoCacheName())
                         )),
-                    matcherArgument
+                    matcherArgument,
+                    Argument(MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName("setupExpression"),
+                        IdentifierName("Target")
+                        )),
                 }));
 
             if (SetupMethod.ReturnsVoid)
@@ -235,7 +271,7 @@ namespace Pretender.SourceGenerator
 
             var interceptsLocation = new InterceptsLocationInfo(OriginalInvocation);
 
-            return MethodDeclaration(returnType, $"Setup{index}")
+            var setupMethod = MethodDeclaration(returnType, $"Setup{index}")
                 .WithBody(Block(statements.ToArray()))
                 .WithParameterList(ParameterList(SeparatedList(new[]
                 {
@@ -249,6 +285,9 @@ namespace Pretender.SourceGenerator
                 .WithModifiers(TokenList(Token(SyntaxKind.InternalKeyword), Token(SyntaxKind.StaticKeyword)))
                 .WithAttributeLists(SingletonList(AttributeList(
                     SingletonSeparatedList(interceptsLocation.ToAttributeSyntax()))));
+
+            allMembers.Add(setupMethod);
+            return [.. allMembers];
         }
 
         private void ValidateArgument(IArgumentOperation operation)
