@@ -1,0 +1,46 @@
+name: Release
+on:
+  release: 
+    types:
+      published
+
+env:
+  # Setting these variables allows .NET CLI to use rich color codes in console output
+  TERM: xterm
+  DOTNET_SYSTEM_CONSOLE_ALLOW_ANSI_COLOR_REDIRECTION: true
+  # Skip boilerplate output
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  release:
+    runs-on: ubuntu-22.04
+    name: Release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install .NET
+        uses: actions/setup-dotnet@v3
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore
+
+      - name: Pack
+        run: dotnet pack
+      
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: package
+          path: "**/*.nupkg"
+
+      - name: Deploy Artifacts
+        run: >
+          dotnet nuget push **/*.nupkg
+          -- source https://api.nuget.org/v3/index.json
+          --api-key ${{ secrets.nuget_api_key }}
