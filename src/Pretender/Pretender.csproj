@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <VersionPrefix>0.1.0</VersionPrefix>
+    <VersionPrefix>0.1.1</VersionPrefix>
     <VersionSuffix>prerelease</VersionSuffix>
     <Description>A mocking framework that makes use of source generators an interceptors to be fast and give you control.</Description>
     <PackageId>Pretender</PackageId>
@@ -23,6 +23,7 @@
   <ItemGroup>
     <None Include="..\Pretender.SourceGenerator\bin\$(Configuration)\netstandard2.0\Pretender.SourceGenerator.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\favicon.png" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
