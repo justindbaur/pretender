@@ -7,6 +7,8 @@
     <PackageId>Pretender</PackageId>
     <PackageTags>mocking;testing;unittests;source-generators</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <DebugType>embedded</DebugType>
   </PropertyGroup>
 
   <ItemGroup>

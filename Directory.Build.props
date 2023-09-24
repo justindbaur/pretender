@@ -8,6 +8,5 @@
     <Authors>Justin Baur</Authors>
     <PackageTags>mocking;testing;unittests;source-generators</PackageTags>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
-    <IncludeSymbols>true</IncludeSymbols>
   </PropertyGroup>
 </Project>
