@@ -25,7 +25,7 @@ namespace Pretender.SourceGenerator
                 Expression: MemberAccessExpressionSyntax
                 {
                     // pretend.Setup(i => i.Something());
-                    Name.Identifier.ValueText: "Setup",
+                    Name.Identifier.ValueText: "Setup" or "SetupSet",
                 },
                 ArgumentList.Arguments.Count: 1
             };

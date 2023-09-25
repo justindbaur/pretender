@@ -22,9 +22,10 @@ namespace Pretender.SourceGenerator
 
             var pretendType = ((INamedTypeSymbol)invocationOperation.Type!).TypeArguments[0];
 
-            var setupMethod = SimplifyOperation(setupExpressionArg.Value, pretendType);
-
             PretendType = pretendType;
+
+            var setupMethod = SimplifyOperation(setupExpressionArg.Value);
+
 
             if (setupMethod == default)
             {
@@ -350,11 +351,11 @@ namespace Pretender.SourceGenerator
             return true;
         }
 
-        private (IMethodSymbol Method, ImmutableArray<IArgumentOperation> Arguments) SimplifyBlockOperation(IBlockOperation operation, ITypeSymbol pretendType)
+        private (IMethodSymbol Method, ImmutableArray<IArgumentOperation> Arguments) SimplifyBlockOperation(IBlockOperation operation)
         {
             foreach (var childOperation in operation.Operations)
             {
-                var method = SimplifyOperation(childOperation, pretendType);
+                var method = SimplifyOperation(childOperation);
                 if (method != default)
                 {
                     return method;
@@ -364,50 +365,63 @@ namespace Pretender.SourceGenerator
             return default;
         }
 
-        private (IMethodSymbol Method, ImmutableArray<IArgumentOperation> Arguments) SimplifyReturnOperation(IReturnOperation operation, ITypeSymbol pretendType)
+        private (IMethodSymbol Method, ImmutableArray<IArgumentOperation> Arguments) SimplifyReturnOperation(IReturnOperation operation)
         {
             return operation.ReturnedValue switch
             {
-                not null => SimplifyOperation(operation.ReturnedValue, pretendType),
+                not null => SimplifyOperation(operation.ReturnedValue),
                 // If there is not returned value, this is a dead end.
                 _ => default,
             };
         }
 
-        private (IMethodSymbol Method, ImmutableArray<IArgumentOperation> Arguments) SimplifyOperation(IOperation operation, ITypeSymbol pretendType)
+        private (IMethodSymbol Method, ImmutableArray<IArgumentOperation> Arguments) SimplifyOperation(IOperation operation)
         {
             // TODO: Support more operations
             return operation.Kind switch
             {
-                OperationKind.Return => SimplifyReturnOperation((IReturnOperation)operation, pretendType),
-                OperationKind.Conversion => SimplifyOperation(((IConversionOperation)operation).Operand, pretendType),
-                OperationKind.Block => SimplifyBlockOperation((IBlockOperation)operation, pretendType),
-                OperationKind.AnonymousFunction => SimplifyOperation(((IAnonymousFunctionOperation)operation).Body, pretendType),
-                OperationKind.Invocation => TryMethod((IInvocationOperation)operation, pretendType),
+                OperationKind.Return => SimplifyReturnOperation((IReturnOperation)operation),
+                OperationKind.Conversion => SimplifyOperation(((IConversionOperation)operation).Operand),
+                OperationKind.Block => SimplifyBlockOperation((IBlockOperation)operation),
+                OperationKind.AnonymousFunction => SimplifyOperation(((IAnonymousFunctionOperation)operation).Body),
+                OperationKind.Invocation => TryMethod((IInvocationOperation)operation),
                 // ExpressionStatement is probably a dead path now but who cares
-                OperationKind.ExpressionStatement => SimplifyOperation(((IExpressionStatementOperation)operation).Operation, pretendType),
-                OperationKind.DelegateCreation => SimplifyOperation(((IDelegateCreationOperation)operation).Target, pretendType),
+                OperationKind.ExpressionStatement => SimplifyOperation(((IExpressionStatementOperation)operation).Operation),
+                OperationKind.DelegateCreation => SimplifyOperation(((IDelegateCreationOperation)operation).Target),
                 // TODO: Do something for SetupSet to get the set method instead
                 OperationKind.PropertyReference => TryProperty((IPropertyReferenceOperation)operation),
                 _ => default,
             };
         }
 
-        private static (IMethodSymbol Method, ImmutableArray<IArgumentOperation> Arguments) TryProperty(IPropertyReferenceOperation propertyReference)
+        private (IMethodSymbol Method, ImmutableArray<IArgumentOperation> Arguments) TryProperty(IPropertyReferenceOperation propertyReference)
         {
-            var getMethod = propertyReference.Property.GetMethod;
+            if (propertyReference.Instance == null)
+            {
+                return default;
+            }
+
+            if (!SymbolEqualityComparer.Default.Equals(propertyReference.Instance.Type, PretendType))
+            {
+                return default;
+            }
+
+            var method = OriginalInvocation.TargetMethod.Name == "SetupSet"
+                ? propertyReference.Property.SetMethod
+                : propertyReference.Property.GetMethod;
 
             // TODO: Validate the get method exists on the type we are pretending
             // and that the return type it's returning is the expected one
-            if (getMethod != null)
+            if (method == null)
             {
-                return (getMethod, []);
+                return default;
             }
 
-            return default;
+            // I still don't return arguments for a property setter right?
+            return (method, []);
         }
 
-        private (IMethodSymbol Method, ImmutableArray<IArgumentOperation> Arguments) TryMethod(IInvocationOperation operation, ITypeSymbol pretendType)
+        private (IMethodSymbol Method, ImmutableArray<IArgumentOperation> Arguments) TryMethod(IInvocationOperation operation)
         {
             var instance = operation.Instance;
             var method = operation.TargetMethod;
@@ -421,14 +435,14 @@ namespace Pretender.SourceGenerator
 
             if (instance is IParameterReferenceOperation parameter)
             {
-                if (!SymbolEqualityComparer.Default.Equals(parameter.Type, pretendType))
+                if (!SymbolEqualityComparer.Default.Equals(parameter.Type, PretendType))
                 {
                     return default;
                 }
             }
             // TODO: Should we allow any other instance operation types?
 
-            var pretendMethods = pretendType.GetMembers()
+            var pretendMethods = PretendType.GetMembers()
                 .OfType<IMethodSymbol>();
 
             if (!pretendMethods.Contains(method, SymbolEqualityComparer.Default))

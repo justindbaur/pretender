@@ -25,6 +25,11 @@ public class Pretend<T>
         throw new InvalidProgramException("This method should have been intercepted via a source generator.");
     }
 
+    public IPretendSetup<T> SetupSet<TReturn>(Func<T, TReturn> setupExpression)
+    {
+        throw new InvalidProgramException("This method should have been intercepted via a source generator.");
+    }
+
     public IPretendSetup<T> Setup(Action<T> setupExpression)
     {
         throw new InvalidProgramException("This method should have been intercepted via a source generator.");
