@@ -1,5 +1,20 @@
 # Pretender
 
+![Nuget](https://img.shields.io/nuget/v/Pretender)
+
+
+## Example
+
+```c#
+var pretendMyInterface = Pretend.For<IMyInterface>();
+
+pretendMyInterface
+    .Setup(i => i.MyMethod(It.IsAny<string>(), 14))
+    .Returns("Hello!");
+
+var myInterface = pretendMyInterface.Create();
+```
+
 ## Benchmarks vs Competitors
 
 > Doing a simple `Is.IsAny<string>()` or equivalent call.
@@ -11,6 +26,7 @@
 | PretenderTest   |     31.41 ns |   0.683 ns |     1.231 ns |     30.86 ns | 0.0268 |      - |     168 B |
 
 ## 0.1.0
+
 - [x] Intercept `.Create` calls
 - [x] Base implementation name off of `ITypeSymbol` derived info
 - [x] Async/Task Support
@@ -56,6 +72,7 @@
 
 
 ## Future Ideas
+
 - [ ] What can I do with things that are `protected` or `sealed`
 - [ ] Analyze all the things
 - [ ] Custom awaitable (honestly don't think I care)
@@ -64,4 +81,3 @@
   - [ ] We do people want to step into
   - [ ] What objects will they inspect and how can it be helpful
 - [ ] Documentation
-
