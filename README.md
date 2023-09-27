@@ -1,6 +1,6 @@
 # Pretender
 
-![Nuget](https://img.shields.io/nuget/v/Pretender)
+[![Nuget](https://img.shields.io/nuget/v/Pretender)](https://www.nuget.org/packages/Pretender)
 
 
 ## Example
