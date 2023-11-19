@@ -1,12 +1,10 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics;
-using System.Globalization;
-using Pretender.Internals;
 
 namespace Pretender;
 
 [DebuggerDisplay("{DebuggerToString(),nq}")]
-public partial class Pretend<T>
+public sealed partial class Pretend<T>
 {
     // TODO: Should we minimize allocations for rarely called mocks?
     private List<CallInfo>? _calls;
@@ -44,6 +42,7 @@ public partial class Pretend<T>
 
     [EditorBrowsable(EditorBrowsableState.Never)]
     // TODO: Make this obsolete
+    [StackTraceHidden]
     public void Verify(IPretendSetup<T> pretendSetup, Called called)
     {
         // Right now we can't trust that this setup was created before, loop over all the calls and check it

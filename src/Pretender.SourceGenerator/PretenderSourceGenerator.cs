@@ -24,27 +24,7 @@ namespace Pretender.SourceGenerator
             #region Pretend
             IncrementalValuesProvider<PretendEntrypoint> pretendsWithDiagnostics =
                  context.SyntaxProvider.CreateSyntaxProvider(
-                     predicate: static (node, token) =>
-                     {
-                         // Pretend.That<T>();
-                         if (node is InvocationExpressionSyntax
-                             {
-                                 Expression: MemberAccessExpressionSyntax
-                                 {
-                                     // TODO: Will this work with a using static Pretender.Pretend
-                                     // ...
-                                     // That<IInterface>();
-                                     Expression: IdentifierNameSyntax { Identifier.ValueText: "Pretend" },
-                                     Name: GenericNameSyntax { Identifier.ValueText: "That", TypeArgumentList.Arguments.Count: 1 },
-                                 },
-                             })
-                         {
-                             return true;
-                         }
-
-                         // TODO: Allow constructor and shortcut Pretend.Of<T>();
-                         return false;
-                     },
+                     predicate: (node, _) => PretendInvocation.IsCandidateSyntaxNode(node),
                      transform: static (context, token) =>
                      {
                          var operation = context.SemanticModel.GetOperation(context.Node, token);

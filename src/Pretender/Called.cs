@@ -1,4 +1,6 @@
-﻿namespace Pretender
+﻿using System.Diagnostics;
+
+namespace Pretender
 {
     public readonly struct Called
     {
@@ -15,15 +17,31 @@
 
         enum CalledKind
         {
-            Exact
+            Exact,
+            AtLeast,
+            Range,
         }
 
         public static Called Exactly(int expectedCalls)
             => new(expectedCalls, expectedCalls, CalledKind.Exact);
 
+        public static Called AtLeastOnce()
+            => new(1, int.MaxValue, CalledKind.AtLeast);
+
+        public static implicit operator Called(Range range)
+        {
+            if (range.Start.IsFromEnd || range.End.IsFromEnd)
+            {
+                throw new ArgumentException();
+            }
+
+            return new(range.Start.Value, range.End.Value, CalledKind.Range);
+        }
+
         public static implicit operator Called(int expectedCalls)
             => new(expectedCalls, expectedCalls, CalledKind.Exact);
 
+        [StackTraceHidden]
         public void Validate(int callCount)
         {
             switch (_calledKind)
@@ -35,10 +53,26 @@
                         throw new Exception("It was not called exactly that many times.");
                     }
                     break;
+                case CalledKind.AtLeast:
+                    if (callCount < _from)
+                    {
+                        throw new Exception($"It was not called at least {_from} time(s)");
+                    }
+                    break;
+                case CalledKind.Range:
+                    if (callCount < _from || callCount >= _to)
+                    {
+                        throw new Exception($"It was not between the range {_from}..{_to}");
+                    }
+                    break;
                 default:
                     throw new Exception("Invalid call kind.");
             }
+        }
 
+        public override string ToString()
+        {
+            return $"From = {_from}, To = {_to}, Kind = {_calledKind}";
         }
     }
 }

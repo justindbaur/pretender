@@ -7,7 +7,7 @@ namespace Pretender
         [Matcher<AnyMatcher>]
         public static T IsAny<T>()
         {
-            // This method is never normally invoked during its normal usage inside an expression
+            // This method is never normally invoked during its normal usage
             return default!;
         }
 

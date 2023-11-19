@@ -25,9 +25,19 @@ namespace Pretender
             return pretendSetup.Pretend;
         }
 
-        public static Pretend<T> Callback<T>(this IPretendSetup<T> pretendSetup, Callback callback)
+        public static Pretend<T> Callback<T>(this IPretendSetup<T> pretendSetup, Action<CallInfo> callback)
         {
             pretendSetup.SetBehavior(new CallbackBehavior(callback));
+            return pretendSetup.Pretend;
+        }
+
+        public static Pretend<T> Does<T, T1>(this IPretendSetup<T> pretendSetup, Action<T1> callback)
+        {
+            pretendSetup.SetBehavior(new CallbackBehavior(callInfo =>
+            {
+                var firstArg = (T1)callInfo.Arguments[0]!;
+                callback(firstArg);
+            }));
             return pretendSetup.Pretend;
         }
     }
