@@ -9,7 +9,7 @@
             _exception = exception;
         }
 
-        public override void Execute(ref CallInfo callInfo)
+        public override void Execute(CallInfo callInfo)
         {
             throw _exception;
         }

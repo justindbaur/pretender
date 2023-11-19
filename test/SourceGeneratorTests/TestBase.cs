@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Runtime.CompilerServices;
+using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
@@ -79,6 +80,19 @@ namespace SourceGeneratorTests
             var runResult = driver.GetRunResult();
 
             return (Assert.Single(runResult.Results), updateCompilation);
+        }
+
+        public void CompareAgainstBaseline(GeneratedSourceResult result, [CallerMemberName] string testMethodName = null!)
+        {
+            var resultFileName = result.HintName.Replace('.', '_');
+            var baseLineName = $"{GetType().Name}.{testMethodName}.{resultFileName}.txt";
+            var resourceName = typeof(TestBase).Assembly.GetManifestResourceNames()
+                .Single(r => r.EndsWith(baseLineName));
+
+            using var stream = typeof(TestBase).Assembly.GetManifestResourceStream(resourceName)!;
+            using var reader = new StreamReader(stream);
+            Assert.Equal(reader.ReadToEnd(), result.SourceText.ToString());
+
         }
 
         private Task<Compilation> CreateCompilationAsync(string source)

@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
+﻿using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Linq;
-using System.Threading;
-
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -39,13 +34,10 @@ namespace Pretender.SourceGenerator
                     invocationLocation,
                     TypeToPretend));
             }
-
-            PretendName = TypeToPretend.ToPretendName();
         }
 
         public ITypeSymbol TypeToPretend { get; }
         public Location InvocationLocation { get; }
-        public string PretendName { get; }
         public List<Diagnostic> Diagnostics { get; } = new List<Diagnostic>();
 
         public CompilationUnitSyntax GetCompilationUnit(CancellationToken token)
@@ -165,16 +157,23 @@ namespace Pretender.SourceGenerator
                 Trivia(NullableDirectiveTrivia(Token(SyntaxKind.EnableKeyword), true)),
                 Comment("/// <inheritdoc/>"));
 
+            var sourceGenerationNamespace = KnownBlocks.OurNamespace
+                .AddMembers(classDeclaration.WithInheritDoc())
+                .AddUsings(
+                    UsingDirective(IdentifierName("System.Reflection")),
+                    KnownBlocks.PretenderUsing
+                );
+
             return CompilationUnit()
-                .AddMembers(classDeclaration.WithLeadingTrivia(leadingTrivia))
+                .AddMembers(sourceGenerationNamespace)
                 .WithLeadingTrivia(leadingTrivia)
                 .NormalizeWhitespace();
         }
 
         private static FieldDeclarationSyntax CreateMethodInfoField(IMethodSymbol method, ExpressionSyntax expressionSyntax)
         {
-            // public static readonly MethodInfo_name_4B2 = <expression>!;
-            return FieldDeclaration(VariableDeclaration(ParseTypeName("global::System.Reflection.MethodInfo")))
+            // public static readonly MethodInfo MethodInfo_name_4B2 = <expression>!;
+            return FieldDeclaration(VariableDeclaration(ParseTypeName("MethodInfo")))
                 .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword), Token(SyntaxKind.ReadOnlyKeyword))
                 .AddDeclarationVariables(VariableDeclarator(Identifier(method.ToMethodInfoCacheName()))
                     .WithInitializer(EqualsValueClause(
@@ -223,14 +222,14 @@ namespace Pretender.SourceGenerator
 
         private TypeSyntax GetGenericPretendType()
         {
-            return GenericName(Identifier("global::Pretender.Pretend"),
+            return GenericName(Identifier("Pretend"),
                     TypeArgumentList(SingletonSeparatedList(ParseTypeName(TypeToPretend.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)))));
         }
 
         private FieldDeclarationSyntax GetStaticMethodCacheField(IMethodSymbol method, int index)
         {
             // TODO: Get method info via argument types
-            return FieldDeclaration(VariableDeclaration(ParseTypeName("global::System.Reflection.MethodInfo")))
+            return FieldDeclaration(VariableDeclaration(ParseTypeName("MethodInfo")))
                 .AddModifiers(Token(SyntaxKind.PrivateKeyword), Token(SyntaxKind.StaticKeyword), Token(SyntaxKind.ReadOnlyKeyword))
                 .AddDeclarationVariables(VariableDeclarator(Identifier($"__methodInfo_{method.Name}_{index}"))
                     .WithInitializer(EqualsValueClause(
@@ -242,20 +241,28 @@ namespace Pretender.SourceGenerator
         {
             var methodBodyStatements = new List<StatementSyntax>();
 
+            // This is using the new collection expression syntax in C# 12
+            // [arg1, arg2, arg3]
             var collectionExpression = CollectionExpression()
-                .AddElements(method.Parameters.Select(p =>
-                {
-                    return ExpressionElement(IdentifierName(p.Name));
-                }).ToArray());
+                .AddElements(method.Parameters.Select(p 
+                    => ExpressionElement(IdentifierName(p.Name))).ToArray());
 
-            // ReadOnlySpan<object?> arguments = [arg0, arg1];
+            // object?[]
+            var typeSyntax = ArrayType(NullableType(PredefinedType(Token(SyntaxKind.ObjectKeyword))))
+                .WithRankSpecifiers(SingletonList(ArrayRankSpecifier()));
 
+            var argumentsIdentifier = IdentifierName("__arguments");
+            var callInfoIdentifier = IdentifierName("__callInfo");
+
+            // I'm not currently able to use Span because I have to store CallInfo for late Setup/Verify
+            // but I don't want to delete this code in case this becomes possible or I don't want to support that
+            // Span<object?>
+            //var typeSyntax = GenericName("Span").AddTypeArgumentListArguments(NullableType(PredefinedType(Token(SyntaxKind.ObjectKeyword))));
+
+            // object? [] arguments = [arg0, arg1];
             var argumentsDeclaration = LocalDeclarationStatement(
-                VariableDeclaration(
-                    // ReadOnlySpan<object?>
-                    GenericName("Span").AddTypeArgumentListArguments(NullableType(PredefinedType(Token(SyntaxKind.ObjectKeyword))))
-                )
-                .AddVariables(VariableDeclarator("arguments")
+                VariableDeclaration(typeSyntax)
+                .AddVariables(VariableDeclarator(argumentsIdentifier.Identifier)
                     .WithInitializer(EqualsValueClause(collectionExpression))
                 )
             );
@@ -265,18 +272,20 @@ namespace Pretender.SourceGenerator
             // var callInfo = new CallInfo(__methodInfo_MethodName_0, arguments);
             var callInfoCreation = LocalDeclarationStatement(
                 VariableDeclaration(IdentifierName("var"))
-                    .AddVariables(VariableDeclarator(Identifier("callInfo"))
-                        .WithInitializer(EqualsValueClause(ObjectCreationExpression(ParseTypeName("global::Pretender.CallInfo"))
-                            .AddArgumentListArguments(Argument(IdentifierName(method.ToMethodInfoCacheName())), Argument(IdentifierName("arguments")))))));
+                    .AddVariables(VariableDeclarator(callInfoIdentifier.Identifier)
+                        .WithInitializer(EqualsValueClause(ObjectCreationExpression(ParseTypeName("CallInfo"))
+                            .AddArgumentListArguments(Argument(IdentifierName(method.ToMethodInfoCacheName())), Argument(argumentsIdentifier))))));
 
             methodBodyStatements.Add(callInfoCreation);
+
+            // TODO: Call inner implementations when we support them
 
             // _pretend.Handle(callInfo);
             var handleCall = ExpressionStatement(InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                 IdentifierName("_pretend"),
                 IdentifierName("Handle")))
                 .WithArgumentList(ArgumentList(SingletonSeparatedList(
-                    Argument(IdentifierName("callInfo")).WithRefKindKeyword(Token(SyntaxKind.RefKeyword))))));
+                    Argument(callInfoIdentifier)))));
 
             methodBodyStatements.Add(handleCall);
 
@@ -285,6 +294,8 @@ namespace Pretender.SourceGenerator
             var refAndOutParameters = method.Parameters
                 .Where(p => p.RefKind == RefKind.Ref || p.RefKind == RefKind.Out);
 
+            
+
             foreach (var p in refAndOutParameters)
             {
                 // assign them to the values from arguments
@@ -292,7 +303,7 @@ namespace Pretender.SourceGenerator
                     SyntaxKind.SimpleAssignmentExpression,
                     IdentifierName(p.Name),
                     ElementAccessExpression(
-                        IdentifierName("arguments"),
+                        argumentsIdentifier,
                         BracketedArgumentList(SingletonSeparatedList(
                             Argument(LiteralExpression(
                                 SyntaxKind.NumericLiteralExpression,
@@ -305,8 +316,8 @@ namespace Pretender.SourceGenerator
             if (method.ReturnType.SpecialType != SpecialType.System_Void)
             {
                 var returnStatement = ReturnStatement(CastExpression(
-                        ParseTypeName(method.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)),
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, IdentifierName("callInfo"), IdentifierName("ReturnValue"))));
+                        method.ReturnType.AsUnknownTypeSyntax(),
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, callInfoIdentifier, IdentifierName("ReturnValue"))));
 
                 methodBodyStatements.Add(returnStatement);
             }

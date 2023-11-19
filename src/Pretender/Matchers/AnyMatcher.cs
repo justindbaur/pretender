@@ -1,8 +1,8 @@
 ﻿namespace Pretender.Matchers
 {
-    public class AnyMatcher : IMatcher
+    public sealed class AnyMatcher : IMatcher
     {
-        public static AnyMatcher Instance = new AnyMatcher();
+        public static AnyMatcher Instance = new();
 
         public bool Matches(object? argument)
         {

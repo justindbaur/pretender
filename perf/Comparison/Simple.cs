@@ -31,7 +31,7 @@ namespace Comparison
         [Benchmark(Baseline = true)]
         public string PretenderTest()
         {
-            var pretend = Pretend.For<ISimpleInterface>();
+            var pretend = Pretend.That<ISimpleInterface>();
 
             pretend.Setup(i => i.Foo(It.Is<string>(static i => i == "1")))
                 .Returns("2");

@@ -33,4 +33,8 @@
     <ProjectReference Include="..\..\src\Pretender\Pretender.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Baselines\**\*.txt" />
+  </ItemGroup>
+
 </Project>

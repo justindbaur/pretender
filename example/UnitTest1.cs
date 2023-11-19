@@ -7,7 +7,7 @@ public class UnitTest1
     [Fact]
     public void Test1()
     {
-        var pretendMyInterface = Pretend.For<IInterface>()
+        var pretendMyInterface = Pretend.That<IInterface>()
             .Setup(i => i.Greeting("Mike", It.IsAny<int>()))
             .Returns("Hi Mike!");
 
@@ -19,7 +19,7 @@ public class UnitTest1
     [Fact]
     public async Task Test2()
     {
-        var pretend = Pretend.For<IMyInterface>();
+        var pretend = Pretend.That<IMyInterface>();
 
         var local = "Value";
 
@@ -29,15 +29,25 @@ public class UnitTest1
 
 
         var myOtherInterface = pretend.Create();
+
         var value = await myOtherInterface.Greeting("Value");
+
+        pretend.Verify(i => i.Greeting(local), 1);
         Assert.Equal("Thing", value);
     }
 
-        [Fact]
+    [Fact]
     public void Test3()
     {
-        var pretend = Pretend.For<IInterface>()
+        var pretend = Pretend.That<IInterface>()
             .Setup(i => i.Greeting("Hello", It.IsAny<int>()));
+
+        var item = pretend.Pretend.Create();
+
+        var response = item.Greeting("Hello", 12);
+        Assert.Null(response);
+
+        pretend.Verify(1);
     }
 }
 

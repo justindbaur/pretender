@@ -1,12 +1,12 @@
 # Pretender
 
-[![Nuget](https://img.shields.io/nuget/v/Pretender)](https://www.nuget.org/packages/Pretender)
+[![NuGet](https://img.shields.io/nuget/v/Pretender)](https://www.nuget.org/packages/Pretender)
 
 
 ## Example
 
 ```c#
-var pretendMyInterface = Pretend.For<IMyInterface>();
+var pretendMyInterface = Pretend.That<IMyInterface>();
 
 pretendMyInterface
     .Setup(i => i.MyMethod(It.IsAny<string>(), 14))

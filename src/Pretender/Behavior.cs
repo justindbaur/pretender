@@ -2,6 +2,6 @@
 {
     public abstract class Behavior
     {
-        public abstract void Execute(ref CallInfo callInfo);
+        public abstract void Execute(CallInfo callInfo);
     }
 }

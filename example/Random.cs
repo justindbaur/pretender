@@ -8,7 +8,7 @@ public class TestClass
 {
     public TestClass()
     {
-        var pretend = Pretend.For<IInterface>();
+        var pretend = Pretend.That<IInterface>();
         pretend.Setup(i => i.Greeting("John", 12));
     }
 }

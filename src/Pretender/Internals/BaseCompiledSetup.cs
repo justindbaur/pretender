@@ -4,6 +4,7 @@ using System.Reflection;
 namespace Pretender.Internals
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
+    // TODO: Obsolete this
     public abstract class BaseCompiledSetup<T>(
         Pretend<T> pretend,
         MethodInfo methodInfo,
@@ -13,10 +14,10 @@ namespace Pretender.Internals
         private readonly MethodInfo _methodInfo = methodInfo;
         private readonly Matcher _matcher = matcher;
         private readonly object? _target = target;
-
         protected Behavior? _behavior;
 
         public Pretend<T> Pretend { get; } = pretend;
+        public int TimesCalled { get; private set; }
 
         public void SetBehavior(Behavior behavior)
         {
@@ -28,21 +29,29 @@ namespace Pretender.Internals
             _behavior = behavior;
         }
 
-        public void ExecuteCore(ref CallInfo callInfo)
+        public void ExecuteCore(CallInfo callInfo)
+        {
+            if (!Matches(callInfo))
+            {
+                return;
+            }
+            TimesCalled++;
+        }
+
+        public bool Matches(CallInfo callInfo)
         {
             // TODO: Mark as attempted?
             if (callInfo.MethodInfo != _methodInfo)
             {
-                return;
+                return false;
             }
 
             if (!_matcher(callInfo, _target))
             {
-                return;
+                return false;
             }
 
-            // TODO: Mark as matched
-            // TODO: Set times matched?
+            return true;
         }
     }
 }

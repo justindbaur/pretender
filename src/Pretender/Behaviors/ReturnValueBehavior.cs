@@ -8,7 +8,7 @@
         {
             _value = value;
         }
-        public override void Execute(ref CallInfo callInfo)
+        public override void Execute(CallInfo callInfo)
         {
             callInfo.ReturnValue = _value;
         }

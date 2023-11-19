@@ -13,42 +13,6 @@ namespace Pretender.SourceGenerator
 {
     internal static class SymbolExtensions
     {
-        public static IEnumerable<IGrouping<string, IMethodSymbol>> GetGroupedMethods(this ITypeSymbol type)
-        {
-            return type.GetMembers()
-                .OfType<IMethodSymbol>()
-                .GroupBy(m => m.Name);
-        }
-
-        public static IEnumerable<(IMethodSymbol MethodSymbol, MethodDeclarationSyntax MethodDeclaration)> GetEquivalentMethodSignatures(this IEnumerable<IMethodSymbol> methods)
-        {
-            foreach (var method in methods)
-            {
-                var methodDeclaration = MethodDeclaration(
-                    returnType: ParseTypeName(method.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)),
-                    identifier: method.Name)
-                    .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword))) // TODO: Are there other modifiers we need to copy?
-                    .AddParameterListParameters(method.Parameters.Select(GetParameter).ToArray())
-                    .WithInheritDoc();
-
-                yield return (method, methodDeclaration);
-            }
-
-            static ParameterSyntax GetParameter(IParameterSymbol parameter)
-            {
-                var parameterSyntax = Parameter(Identifier(parameter.Name))
-                    .WithType(ParseTypeName(parameter.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)));
-
-                if (parameter.HasExplicitDefaultValue)
-                {
-                    // TODO: Support default parameters
-                    throw new NotImplementedException("Default parameters are not supported yet.");
-                }
-
-                return parameterSyntax;
-            }
-        }
-
         public static bool EqualsByName(this ITypeSymbol type, string[] name)
         {
             var length = name.Length;
@@ -67,14 +31,15 @@ namespace Pretender.SourceGenerator
                 }
                 targetNamespace = targetNamespace.ContainingNamespace;
             }
+
             // Once all namespace parts have been enumerated
             // we should be in the global namespace
-            if (targetNamespace.IsGlobalNamespace)
+            if (!targetNamespace.IsGlobalNamespace)
             {
-                return true;
+                return false;
             }
 
-            return false;
+            return true;
         }
 
         public static TypeSyntax AsUnknownTypeSyntax(this ITypeSymbol type)
@@ -278,7 +243,7 @@ namespace Pretender.SourceGenerator
             if (parameter.HasExplicitDefaultValue)
             {
                 parameterSyntax = parameterSyntax
-                    .WithDefault(EqualsValueClause(parameter.ExplicitDefaultValue.ToLiteralExpression()));
+                    .WithDefault(EqualsValueClause(parameter.ToLiteralExpression()));
             }
 
             var modifiers = new List<SyntaxToken>();
@@ -306,7 +271,13 @@ namespace Pretender.SourceGenerator
             return parameterSyntax;
         }
 
-        public static LiteralExpressionSyntax ToLiteralExpression(this object? value)
+        public static LiteralExpressionSyntax ToLiteralExpression(this IParameterSymbol parameterSymbol)
+        {
+            Debug.Assert(parameterSymbol.HasExplicitDefaultValue);
+            return ToLiteralExpression(parameterSymbol.ExplicitDefaultValue);
+        }
+
+        private static LiteralExpressionSyntax ToLiteralExpression(object? value)
         {
             if (value == null)
             {

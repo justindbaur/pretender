@@ -2,10 +2,16 @@
 
 namespace Pretender
 {
-    public ref struct CallInfo(MethodInfo methodInfo, Span<object?> arguments)
+    public class CallInfo
     {
-        public MethodInfo MethodInfo { get; } = methodInfo;
-        public Span<object?> Arguments { get; } = arguments;
+        public CallInfo(MethodInfo methodInfo, object?[] arguments)
+        {
+            MethodInfo = methodInfo;
+            Arguments = arguments;
+        }
+
+        public MethodInfo MethodInfo { get; }
+        public object?[] Arguments { get; }
         public object? ReturnValue { get; set; }
     }
 }
