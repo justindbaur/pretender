@@ -103,7 +103,7 @@ namespace SourceGeneratorTests
 
             using var stream = typeof(TestBase).Assembly.GetManifestResourceStream(resourceName)!;
             using var reader = new StreamReader(stream);
-            Assert.Equal(reader.ReadToEnd(), result.SourceText.ToString());
+            Assert.Equal(reader.ReadToEnd().ReplaceLineEndings(), result.SourceText.ToString().ReplaceLineEndings());
 #else
             var baseDirectory = new DirectoryInfo(typeof(TestBase).Assembly.GetAssemblyLocation())
                 .Parent?.Parent?.Parent?.Parent;
