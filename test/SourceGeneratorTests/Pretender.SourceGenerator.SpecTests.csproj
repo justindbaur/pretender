@@ -34,7 +34,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Baselines\**\*.txt" />
+    <EmbeddedResource Include="Baselines\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Baselines\**\*.cs" />
   </ItemGroup>
 
 </Project>

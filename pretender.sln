@@ -11,7 +11,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Pretender.SourceGenerator",
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{2667A3D7-30CA-4DF5-B2F4-A7554C6D3ADD}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SourceGeneratorTests", "test\SourceGeneratorTests\SourceGeneratorTests.csproj", "{09EB76D6-C82D-48A9-A0F7-B9BCC10B7621}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Pretender.SourceGenerator.SpecTests", "test\SourceGeneratorTests\Pretender.SourceGenerator.SpecTests.csproj", "{09EB76D6-C82D-48A9-A0F7-B9BCC10B7621}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{9E33F6C1-8032-4CCA-A485-685B730A6EAE}"
 	ProjectSection(SolutionItems) = preProject
@@ -19,13 +19,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		README.md = README.md
 	EndProjectSection
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Example", "example\Example.csproj", "{6D387D31-B80A-4E0C-A0F8-066185964A44}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Example.Tests", "example\Example.Tests.csproj", "{6D387D31-B80A-4E0C-A0F8-066185964A44}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "perf", "perf", "{DA78B66F-EE75-46B5-8EC8-6F498A8AFC64}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Comparison", "perf\Comparison\Comparison.csproj", "{96C653E3-D10B-47A0-8E42-0B93119AE145}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pretender.Tests", "test\Pretender.Tests\Pretender.Tests.csproj", "{17552274-CC28-438A-80BB-4A161F95AB11}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "example", "example", "{3BF89FF8-E743-46DF-BC57-F4B617DB8D92}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -117,6 +119,7 @@ Global
 		{F22B60A6-3E45-42EE-842D-321232A90968} = {DFB5E6EE-B017-40FD-BC67-CE0471060A68}
 		{90CC0802-39BB-4390-8A06-C7FD0C14D5C7} = {DFB5E6EE-B017-40FD-BC67-CE0471060A68}
 		{09EB76D6-C82D-48A9-A0F7-B9BCC10B7621} = {2667A3D7-30CA-4DF5-B2F4-A7554C6D3ADD}
+		{6D387D31-B80A-4E0C-A0F8-066185964A44} = {3BF89FF8-E743-46DF-BC57-F4B617DB8D92}
 		{96C653E3-D10B-47A0-8E42-0B93119AE145} = {DA78B66F-EE75-46B5-8EC8-6F498A8AFC64}
 		{17552274-CC28-438A-80BB-4A161F95AB11} = {2667A3D7-30CA-4DF5-B2F4-A7554C6D3ADD}
 	EndGlobalSection

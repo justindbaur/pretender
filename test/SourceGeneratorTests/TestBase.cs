@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
+using Microsoft.VisualStudio.TestPlatform.PlatformAbstractions;
 using Pretender;
 using Pretender.SourceGenerator;
 
@@ -82,8 +83,20 @@ namespace SourceGeneratorTests
             return (Assert.Single(runResult.Results), updateCompilation);
         }
 
-        public void CompareAgainstBaseline(GeneratedSourceResult result, [CallerMemberName] string testMethodName = null!)
+        public async Task RunAndCompareAsync(string source, [CallerMemberName] string testMethodName = null!)
         {
+            var (result, _) = await RunGeneratorAsync(source);
+            Assert.All(result.GeneratedSources, s =>
+            {
+                CompareAgainstBaseline(s, testMethodName);
+            });
+        }
+
+        private void CompareAgainstBaseline(GeneratedSourceResult result, string testMethodName = null!)
+        {
+            var normalizedName = result.HintName[..^3].Replace('.', '_') + ".cs";
+#if !GENERATE_SOURCE
+            var fileInfo = new FileInfo(result.HintName);
             var resultFileName = result.HintName.Replace('.', '_');
             var baseLineName = $"{GetType().Name}.{testMethodName}.{resultFileName}.txt";
             var resourceName = typeof(TestBase).Assembly.GetManifestResourceNames()
@@ -92,7 +105,24 @@ namespace SourceGeneratorTests
             using var stream = typeof(TestBase).Assembly.GetManifestResourceStream(resourceName)!;
             using var reader = new StreamReader(stream);
             Assert.Equal(reader.ReadToEnd(), result.SourceText.ToString());
+#else
+            var baseDirectory = new DirectoryInfo(typeof(TestBase).Assembly.GetAssemblyLocation())
+                .Parent?.Parent?.Parent?.Parent;
 
+            if (baseDirectory == null || !baseDirectory.Exists)
+            {
+                throw new Exception("Could not find directory.");
+            }
+
+            var baselinePath = Path.Combine(
+                baseDirectory.FullName,
+                "Baselines",
+                GetType().Name,
+                testMethodName,
+                normalizedName);
+
+            File.WriteAllText(baselinePath, result.SourceText.ToString());
+#endif
         }
 
         private Task<Compilation> CreateCompilationAsync(string source)

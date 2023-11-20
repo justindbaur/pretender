@@ -66,7 +66,7 @@ public sealed partial class Pretend<T>
     // TODO: Make this obsolete
     public void Handle(CallInfo callInfo)
     {
-        _calls = [];
+        _calls ??= [];
         _calls.Add(callInfo);
 
         if (_setups != null)
