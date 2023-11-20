@@ -96,9 +96,8 @@ namespace SourceGeneratorTests
         {
             var normalizedName = result.HintName[..^3].Replace('.', '_') + ".cs";
 #if !GENERATE_SOURCE
-            var fileInfo = new FileInfo(result.HintName);
             var resultFileName = result.HintName.Replace('.', '_');
-            var baseLineName = $"{GetType().Name}.{testMethodName}.{resultFileName}.txt";
+            var baseLineName = $"{GetType().Name}.{testMethodName}.{normalizedName}";
             var resourceName = typeof(TestBase).Assembly.GetManifestResourceNames()
                 .Single(r => r.EndsWith(baseLineName));
 
