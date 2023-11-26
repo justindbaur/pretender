@@ -1,4 +1,7 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
@@ -6,11 +9,9 @@ using Pretender.SourceGenerator.Parser;
 
 namespace Pretender.SourceGenerator
 {
-    // This should be a simple class just holding some information, deeper introspection to find diagnostics should
-    // be done with a type cache
-    internal class VerifyInvocation
+    internal class SetupInvocation
     {
-        public VerifyInvocation(IInvocationOperation operation, Location location)
+        public SetupInvocation(IInvocationOperation operation, Location location)
         {
             Operation = operation;
             Location = location;
@@ -23,34 +24,30 @@ namespace Pretender.SourceGenerator
         {
             return node is InvocationExpressionSyntax
             {
-                // pretend.Verify(i => i.Something(), 2);
                 Expression: MemberAccessExpressionSyntax
                 {
-                    Name.Identifier.ValueText: "Verify", // TODO: or VerifySet
+                    Name.Identifier.ValueText: "Setup" or "SetupSet",
                 },
-                ArgumentList.Arguments.Count: 2
+                ArgumentList.Arguments.Count: 1,
             };
         }
 
-        public static VerifyInvocation? Create(GeneratorSyntaxContext context, CancellationToken cancellationToken)
+        public static SetupInvocation? Create(GeneratorSyntaxContext context, CancellationToken cancellationToken)
         {
             Debug.Assert(IsCandidateSyntaxNode(context.Node));
             var invocationSyntax = (InvocationExpressionSyntax)context.Node;
 
             return context.SemanticModel.GetOperation(invocationSyntax, cancellationToken) is IInvocationOperation operation
-                && IsVerifyOperation(operation)
-                ? new VerifyInvocation(operation, invocationSyntax.GetLocation())
+                && IsSetupOperation(operation)
+                ? new SetupInvocation(operation, invocationSyntax.GetLocation())
                 : null;
         }
 
-        private static bool IsVerifyOperation(IInvocationOperation operation)
+        private static bool IsSetupOperation(IInvocationOperation operation)
         {
-            // TODO: Verify ALL of the things, no false positives should escape here
-            // but we should do it all with string comparisons
             if (operation.TargetMethod is not IMethodSymbol
                 {
-                    // TODO: The name has already been asserted, do I need to do this again?
-                    Name: "Verify", // TODO: or VerifySet,
+                    Name: "Setup" or "SetupSet",
                     ContainingType: INamedTypeSymbol namedTypeSymbol
                 } || !KnownTypeSymbols.IsPretend(namedTypeSymbol))
             {

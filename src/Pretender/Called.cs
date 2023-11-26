@@ -25,10 +25,12 @@ namespace Pretender
         public static Called Exactly(int expectedCalls)
             => new(expectedCalls, expectedCalls, CalledKind.Exact);
 
-        public static Called AtLeastOnce()
-            => new(1, int.MaxValue, CalledKind.AtLeast);
+        public static Called AtLeastOnce() => AtLeast(1);
 
-        public static implicit operator Called(Range range)
+        public static Called AtLeast(int minimumCalls)
+            => new(minimumCalls, int.MaxValue, CalledKind.AtLeast);
+
+        public static Called Range(Range range)
         {
             if (range.Start.IsFromEnd || range.End.IsFromEnd)
             {
@@ -38,8 +40,9 @@ namespace Pretender
             return new(range.Start.Value, range.End.Value, CalledKind.Range);
         }
 
-        public static implicit operator Called(int expectedCalls)
-            => new(expectedCalls, expectedCalls, CalledKind.Exact);
+        public static implicit operator Called(Range range) => Range(range);
+
+        public static implicit operator Called(int expectedCalls) => Exactly(expectedCalls);
 
         [StackTraceHidden]
         public void Validate(int callCount)

@@ -10,25 +10,25 @@ namespace Pretender.SourceGenerator.Emitter
     {
         private readonly ITypeSymbol _pretendType;
         private readonly ITypeSymbol? _returnType;
-        private readonly SetupCreationSpec _setupCreationSpec;
+        private readonly SetupActionEmitter _setupActionEmitter;
         private readonly IInvocationOperation _invocationOperation;
 
-        public VerifyEmitter(ITypeSymbol pretendType, ITypeSymbol? returnType, SetupCreationSpec setupCreationSpec, IInvocationOperation invocationOperation)
+        public VerifyEmitter(ITypeSymbol pretendType, ITypeSymbol? returnType, SetupActionEmitter setupActionEmitter, IInvocationOperation invocationOperation)
         {
             _pretendType = pretendType;
             _returnType = returnType;
-            _setupCreationSpec = setupCreationSpec;
+            _setupActionEmitter = setupActionEmitter;
             _invocationOperation = invocationOperation;
         }
 
-        public MethodDeclarationSyntax EmitVerifyMethod(int index, CancellationToken cancellationToken)
+        public MethodDeclarationSyntax Emit(int index, CancellationToken cancellationToken)
         {
-            var setupGetter = _setupCreationSpec.CreateSetupGetter(cancellationToken);
+            var setupInvocation = _setupActionEmitter.CreateSetupGetter(cancellationToken);
 
             // var setup = pretend.GetOrCreateSetup(...);
             var setupLocal = LocalDeclarationStatement(VariableDeclaration(CommonSyntax.VarType)
                 .WithVariables(SingletonSeparatedList(VariableDeclarator(CommonSyntax.SetupIdentifier)
-                    .WithInitializer(EqualsValueClause(setupGetter)))));
+                    .WithInitializer(EqualsValueClause(setupInvocation)))));
 
             TypeSyntax pretendType = ParseTypeName(_pretendType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
 

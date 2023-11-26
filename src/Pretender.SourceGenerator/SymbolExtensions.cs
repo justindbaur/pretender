@@ -53,6 +53,19 @@ namespace Pretender.SourceGenerator
             return typeSyntax;
         }
 
+        public static ExpressionSyntax ToDefaultValueSyntax(this ITypeSymbol type)
+        {
+            // They have explicitly annotated this type as nullable, so return null
+            if (type.NullableAnnotation == NullableAnnotation.Annotated)
+            {
+                return LiteralExpression(SyntaxKind.DefaultLiteralExpression);
+            }
+
+
+
+            throw new NotImplementedException();
+        }
+
         public static string ToPretendName(this ITypeSymbol symbol)
         {
             return $"Pretend{symbol.Name}{SymbolEqualityComparer.Default.GetHashCode(symbol):X}";

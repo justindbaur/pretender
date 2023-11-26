@@ -8,6 +8,7 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Pretender.SourceGenerator.SetupArguments
 {
+    // TODO: Should probably have Specs for "safe" invocations and capturing specs
     internal class InvocationArgumentSpec : SetupArgumentSpec
     {
         private readonly IInvocationOperation _invocationOperation;
@@ -29,6 +30,7 @@ namespace Pretender.SourceGenerator.SetupArguments
             {
                 if (TryGetMatcherAttributeType(out var matcherType))
                 {
+                    // TODO: Match with KnownTypeSymbols
                     if (matcherType.EqualsByName(["Pretender", "Matchers", "AnyMatcher"]))
                     {
                         _cachedMatcherStatements = ImmutableArray<StatementSyntax>.Empty;
@@ -179,7 +181,7 @@ namespace Pretender.SourceGenerator.SetupArguments
 
         public override int GetHashCode()
         {
-            // TODO: This is not enought for uniqueness
+            // TODO: This is not enough for uniqueness
             return SymbolEqualityComparer.Default.GetHashCode(_invocationOperation.TargetMethod);
         }
     }

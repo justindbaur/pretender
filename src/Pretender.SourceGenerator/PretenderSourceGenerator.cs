@@ -63,41 +63,44 @@ namespace Pretender.SourceGenerator
             #endregion
 
             #region Setup
-            var setupCallsWithDiagnostics =
+            IncrementalValuesProvider<(SetupEmitter? Emitter, ImmutableArray<Diagnostic>? Diagnostics)> setups =
                 context.SyntaxProvider.CreateSyntaxProvider(
-                    predicate: static (node, _) => node.IsSetupCall(),
-                    transform: static (context, token) =>
-                    {
-                        // All of this should be asserted in the predicate
-                        var operation = context.SemanticModel.GetOperation(context.Node, token);
-                        if (operation!.IsValidSetupOperation(context.SemanticModel.Compilation, out var invocation))
-                        {
-                            return new SetupEntrypoint(invocation!);
-                        }
-                        return null;
-                    })
-                .Where(i => i is not null);
-
-            context.RegisterSourceOutput(setupCallsWithDiagnostics, static (context, setup) =>
-            {
-                foreach (var diagnostic in setup!.Diagnostics)
+                    predicate: static (node, _) => SetupInvocation.IsCandidateSyntaxNode(node),
+                    transform: SetupInvocation.Create)
+                .Where(i => i is not null)
+                .Combine(compilationData)
+                .Select(static (tuple, token) =>
                 {
-                    context.ReportDiagnostic(diagnostic);
-                }
-            });
+                    if (tuple.Right is not CompilationData compilationData)
+                    {
+                        return (null, null);
+                    }
 
-            var setups = setupCallsWithDiagnostics
-                .Where(s => s!.Diagnostics.Count == 0);
+                    var parser = new SetupParser(tuple.Left!, compilationData);
+
+                    return parser.Parse(token);
+                })
+                .WithTrackingName("Setup");
 
             context.RegisterSourceOutput(setups.Collect(), static (context, setups) =>
             {
-                
                 var members = new List<MemberDeclarationSyntax>();
-
                 for (var i = 0; i < setups.Length; i++)
                 {
                     var setup = setups[i];
-                    members.AddRange(setup!.GetMembers(i));
+
+                    if (setup.Diagnostics is ImmutableArray<Diagnostic> diagnostics)
+                    {
+                        foreach (var diagnostic in diagnostics)
+                        {
+                            context.ReportDiagnostic(diagnostic);
+                        }
+                    }
+
+                    if (setup.Emitter is SetupEmitter emitter)
+                    {
+                        members.AddRange(emitter.Emit(i, context.CancellationToken));
+                    }
                 }
 
                 var classDeclaration = SyntaxFactory.ClassDeclaration("SetupInterceptors")
@@ -144,15 +147,14 @@ namespace Pretender.SourceGenerator
                     // Create new VerifySpec
                     var parser = new VerifyParser(tuple.Left!, compilationData);
 
-                    return parser.GetVerifyEmitter(cancellationToken);
+                    return parser.Parse(cancellationToken);
                 })
                 .WithTrackingName("Verify");
 
-            // TODO: Register diagnostics
             context.RegisterSourceOutput(verifyCallsWithDiagnostics.Collect(), (context, inputs) =>
             {
                 var methods = new List<MethodDeclarationSyntax>();
-                for ( var i = 0; i < inputs.Length; i++)
+                for (var i = 0; i < inputs.Length; i++)
                 {
                     var input = inputs[i];
                     if (input.Diagnostics is ImmutableArray<Diagnostic> diagnostics)
@@ -166,7 +168,7 @@ namespace Pretender.SourceGenerator
                     if (input.Emitter is VerifyEmitter emitter)
                     {
                         // TODO: Emit VerifyMethod
-                        var method = emitter.EmitVerifyMethod(0, context.CancellationToken);
+                        var method = emitter.Emit(0, context.CancellationToken);
                         methods.Add(method);
                     }
                 }

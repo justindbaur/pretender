@@ -11,6 +11,13 @@ namespace Pretender.SourceGenerator.Parser
         public INamedTypeSymbol? Pretend { get; }
         public INamedTypeSymbol? Pretend_Unbound { get; }
 
+        public INamedTypeSymbol? Task { get; }
+        public INamedTypeSymbol? TaskOfT { get; }
+        public INamedTypeSymbol? ValueTask { get; }
+        public INamedTypeSymbol? ValueTaskOfT { get; }
+
+
+
         public KnownTypeSymbols(CSharpCompilation compilation)
         {
             Compilation = compilation;
@@ -18,6 +25,13 @@ namespace Pretender.SourceGenerator.Parser
             // TODO: Get known types
             Pretend = compilation.GetTypeByMetadataName("Pretender.Pretend`1");
             Pretend_Unbound = Pretend?.ConstructUnboundGenericType();
+
+            Task = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task");
+            // TODO: Create unbounded?
+            TaskOfT = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1");
+            ValueTask = compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask");
+            // TODO: Create unbounded?
+            ValueTaskOfT = compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask`1");
         }
 
         public static bool IsPretend(INamedTypeSymbol type)

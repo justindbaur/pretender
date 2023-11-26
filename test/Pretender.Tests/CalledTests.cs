@@ -12,6 +12,9 @@ namespace Pretender.Tests
             yield return Data(Called.AtLeastOnce(), 1);
             yield return Data(Called.AtLeastOnce(), 2);
 
+            yield return Data(Called.AtLeast(3), 3);
+            yield return Data(Called.AtLeast(3), 10);
+
             // Range
             yield return Data(1..4, 1);
             yield return Data(1..4, 2);
@@ -38,6 +41,8 @@ namespace Pretender.Tests
 
             // AtLeast
             yield return Data(Called.AtLeastOnce(), 0);
+            yield return Data(Called.AtLeast(5), 0);
+            yield return Data(Called.AtLeast(5), 4);
 
             // Range
             yield return Data(2..5, 0);

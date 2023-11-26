@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
+using Pretender.SourceGenerator.Parser;
 using Pretender.SourceGenerator.SetupArguments;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
@@ -24,7 +25,13 @@ namespace Pretender.SourceGenerator
             PretendType = pretendType;
 
             // TODO: Use correct useSetup value
-            SetupCreation = new SetupCreationSpec(setupExpressionArg, pretendType, false);
+            var parser = new SetupActionParser(setupExpressionArg.Value, pretendType, false);
+
+            // TODO: Use the parser properly
+            var (emitter, diagnostics) = parser.Parse(default);
+
+            // TODO: Don't override null
+            SetupCreation = emitter!;
 
             // TODO: Consume diagnostics
             var setupMethod = SimplifyOperation(setupExpressionArg.Value);
@@ -54,6 +61,7 @@ namespace Pretender.SourceGenerator
             }
             Arguments = setupArguments.ToImmutableArray();
 
+            // TODO: Don't do this
             Diagnostics.AddRange(Arguments.SelectMany(s => s.Diagnostics));
         }
 
@@ -62,7 +70,7 @@ namespace Pretender.SourceGenerator
         public ITypeSymbol PretendType { get; }
         public List<Diagnostic> Diagnostics { get; } = new List<Diagnostic>();
         public IMethodSymbol SetupMethod { get; } = null!;
-        public SetupCreationSpec SetupCreation { get; }
+        public SetupActionEmitter SetupCreation { get; }
         public ImmutableArray<SetupArgumentSpec> Arguments { get; }
 
         public MemberDeclarationSyntax[] GetMembers(int index)
