@@ -184,53 +184,59 @@ namespace Pretender.SourceGenerator
 
             #region Create
             var createCalls = context.SyntaxProvider.CreateSyntaxProvider(
-                predicate: (node, token) =>
-                {
-                    if (node is InvocationExpressionSyntax
-                        {
-                            Expression: MemberAccessExpressionSyntax
-                            {
-                                Name.Identifier.ValueText: "Create"
-                            },
-                        }
-                    )
-                    {
-                        return true;
-                    }
-
-                    return false;
-                },
-                transform: (context, token) =>
-                {
-                    var operation = context.SemanticModel.GetOperation(context.Node);
-                    if (operation.IsValidCreateOperation(context.SemanticModel.Compilation, out var invocation, out var typeArguments))
-                    {
-                        return new CreateEntrypoint(invocation, typeArguments);
-                    }
-
-                    return null;
-                })
+                predicate: (node, _) => CreateInvocation.IsCandidateSyntaxNode(node),
+                transform: CreateInvocation.Create)
                 .Where(i => i is not null)!
-                .GroupWith(c => c.Location, CreateEntryPointComparer.Instance);
+                .GroupWith(c => c.Location, CreateInvocationComparer.Instance)
+                .Combine(compilationData)
+                .Select((tuple, token) =>
+                {
+                    if (tuple.Right is not CompilationData compilationData)
+                    {
+                        return (null, null);
+                    }
+
+                    var parser = new CreateParser(tuple.Left.Source, tuple.Left.Elements, tuple.Left.Index, compilationData);
+                    return parser.Parse(token);
+                })
+                .WithTrackingName("Create");
 
             context.RegisterSourceOutput(createCalls, static (context, createCalls) =>
             {
-                var methodDeclaration = createCalls.Source.GetMethodDeclaration(createCalls.Index)
-                    .AddAttributeLists(createCalls.Elements.Select(i => SyntaxFactory.AttributeList(SyntaxFactory.SingletonSeparatedList(i.ToAttributeSyntax()))).ToArray());
+                if (createCalls.Diagnostics is ImmutableArray<Diagnostic> diagnostics)
+                {
+                    foreach (var diagnostic in diagnostics)
+                    {
+                        context.ReportDiagnostic(diagnostic);
+                    }
+                }
 
-                var createClass = SyntaxFactory.ClassDeclaration("CreateInterceptors")
+                // TODO: Don't actually need a list here
+                var members = new List<MemberDeclarationSyntax>();
+
+                string? pretendName = null;
+                if (createCalls.Emitter is CreateEmitter emitter)
+                {
+                    pretendName ??= emitter.Operation.TargetMethod.ReturnType.ToPretendName();
+                    members.Add(emitter.Emit(context.CancellationToken));
+                }
+
+                if (members.Any())
+                {
+                    var createClass = SyntaxFactory.ClassDeclaration("CreateInterceptors")
                         .AddModifiers(SyntaxFactory.Token(SyntaxKind.FileKeyword), SyntaxFactory.Token(SyntaxKind.StaticKeyword))
-                        .AddMembers(methodDeclaration);
+                        .WithMembers(SyntaxFactory.List(members));
 
-                var createNamespace = KnownBlocks.OurNamespace
-                    .AddMembers(createClass)
-                    .AddUsings(KnownBlocks.CompilerServicesUsing, KnownBlocks.PretenderUsing);
+                    var createNamespace = KnownBlocks.OurNamespace
+                        .AddMembers(createClass)
+                        .AddUsings(KnownBlocks.CompilerServicesUsing, KnownBlocks.PretenderUsing);
 
-                var cu = SyntaxFactory.CompilationUnit()
-                    .AddMembers(KnownBlocks.InterceptsLocationAttribute, createNamespace)
-                    .NormalizeWhitespace();
+                    var cu = SyntaxFactory.CompilationUnit()
+                        .AddMembers(KnownBlocks.InterceptsLocationAttribute, createNamespace)
+                        .NormalizeWhitespace();
 
-                context.AddSource($"Pretender.Creates.{createCalls.Source.Operation.TargetMethod.ReturnType.ToPretendName()}.g.cs", cu.GetText(Encoding.UTF8));
+                    context.AddSource($"Pretender.Creates.{pretendName}.g.cs", cu.GetText(Encoding.UTF8));
+                }
             });
             #endregion
         }

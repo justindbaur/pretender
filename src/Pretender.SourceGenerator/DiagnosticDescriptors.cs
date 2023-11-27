@@ -4,8 +4,16 @@ namespace Pretender.SourceGenerator
 {
     internal static class DiagnosticDescriptors
     {
+        public static DiagnosticDescriptor UnsupportedLanguageVersion { get; } = new (
+            "PRTND001",
+            "Unsupported language version",
+            "",
+            "Usage",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
         public static DiagnosticDescriptor UnableToPretendSealedType { get; } = new(
-            "PRTD001",
+            "PRTND002",
             "Unable to Pretend Sealed Types",
             "Sealed types cannot be Pretended, did you mean to use an interface?",
             "Usage",
@@ -13,7 +21,7 @@ namespace Pretender.SourceGenerator
             isEnabledByDefault: true);
 
         public static DiagnosticDescriptor InvalidSetupArgument { get; } = new(
-            "PRTD002",
+            "PRTND003",
             "Invalid Setup Argument",
             "We don't support operation type {0} as a setup argument.",
             "Usage",

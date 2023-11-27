@@ -22,8 +22,7 @@ namespace Pretender.SourceGenerator.Parser
         {
             if (!_isLanguageVersionSupported)
             {
-                // TODO: Create error diagnostic
-                return (null, null);
+                return (null, ImmutableArray.Create(Diagnostic.Create(DiagnosticDescriptors.UnsupportedLanguageVersion, null)));
             }
 
             var operation = _setupInvocation.Operation;
@@ -39,7 +38,7 @@ namespace Pretender.SourceGenerator.Parser
 
             var useSetMethod = operation.TargetMethod.Name == "SetupSet";
 
-            var parser = new SetupActionParser(setupArgument.Value, pretendType, useSetMethod);
+            var parser = new SetupActionParser(setupArgument.Value, pretendType, useSetMethod, _knownTypeSymbols);
 
             var (setupActionEmitter, setupActionDiagnostics) = parser.Parse(cancellationToken);
 

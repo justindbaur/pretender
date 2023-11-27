@@ -11,13 +11,15 @@ namespace Pretender.SourceGenerator.Parser
         private readonly IOperation _setupActionArgument;
         private readonly ITypeSymbol _pretendType;
         private readonly bool _forcePropertySetter;
+        private readonly KnownTypeSymbols _knownTypeSymbols;
 
         // TODO: Should I have a higher IOperation kind here? Like InvocationOperation?
-        public SetupActionParser(IOperation setupActionArgument, ITypeSymbol pretendType, bool forcePropertySetter)
+        public SetupActionParser(IOperation setupActionArgument, ITypeSymbol pretendType, bool forcePropertySetter, KnownTypeSymbols knownTypeSymbols)
         {
             _setupActionArgument = setupActionArgument;
             _pretendType = pretendType;
             _forcePropertySetter = forcePropertySetter;
+            _knownTypeSymbols = knownTypeSymbols;
         }
 
         public (SetupActionEmitter? Emitter, ImmutableArray<Diagnostic>? Diagnostics) Parse(CancellationToken cancellationToken)
@@ -45,7 +47,7 @@ namespace Pretender.SourceGenerator.Parser
                 builder.Add(SetupArgumentSpec.Create(arguments[i], i));
             }
 
-            return (new SetupActionEmitter(_pretendType, candidate.Method, builder.MoveToImmutable()), null);
+            return (new SetupActionEmitter(_pretendType, candidate.Method, builder.MoveToImmutable(), _knownTypeSymbols), null);
         }
 
         private ImmutableArray<InvocationCandidate> GetInvocationCandidates(CancellationToken cancellationToken)

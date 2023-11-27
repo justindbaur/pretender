@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-
+﻿using System.Diagnostics;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-
+using Pretender.SourceGenerator.Parser;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Pretender.SourceGenerator
@@ -53,7 +49,7 @@ namespace Pretender.SourceGenerator
             return typeSyntax;
         }
 
-        public static ExpressionSyntax ToDefaultValueSyntax(this ITypeSymbol type)
+        public static ExpressionSyntax ToDefaultValueSyntax(this INamedTypeSymbol type, KnownTypeSymbols knownTypeSymbols)
         {
             // They have explicitly annotated this type as nullable, so return null
             if (type.NullableAnnotation == NullableAnnotation.Annotated)
@@ -61,7 +57,12 @@ namespace Pretender.SourceGenerator
                 return LiteralExpression(SyntaxKind.DefaultLiteralExpression);
             }
 
+            var comparer = SymbolEqualityComparer.Default;
 
+            if (comparer.Equals(type, knownTypeSymbols.Task))
+            {
+                return KnownBlocks.TaskCompletedTask;
+            }
 
             throw new NotImplementedException();
         }

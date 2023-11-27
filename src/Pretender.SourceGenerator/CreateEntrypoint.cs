@@ -1,5 +1,4 @@
-﻿using System.Linq;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
+﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 using Microsoft.CodeAnalysis.Operations;
 using Microsoft.CodeAnalysis;
@@ -86,7 +85,6 @@ namespace Pretender.SourceGenerator
 
     public class CreateEntryPointComparer : IEqualityComparer<CreateEntrypoint>
     {
-        public static CreateEntryPointComparer Instance = new();
 
         bool IEqualityComparer<CreateEntrypoint>.Equals(CreateEntrypoint x, CreateEntrypoint y)
         {

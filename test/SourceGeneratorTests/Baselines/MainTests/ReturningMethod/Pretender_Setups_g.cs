@@ -29,7 +29,7 @@ namespace Pretender.SourceGeneration
         {
             return pretend.GetOrCreateSetup<string>(0, static (pretend, expr) =>
             {
-                return new ReturningCompiledSetup<global::ISimpleInterface, string>(pretend, PretendISimpleInterface8199A3.MethodInfo_get_Bar_3685A65, matcher: Cache.NoOpMatcher, expr.Target, defaultValue: default);
+                return new ReturningCompiledSetup<global::ISimpleInterface, string>(pretend, PretendISimpleInterface19445CC.MethodInfo_get_Bar_2968A4B, matcher: Cache.NoOpMatcher, expr.Target, defaultValue: default);
             }, setupExpression);
         }
     }

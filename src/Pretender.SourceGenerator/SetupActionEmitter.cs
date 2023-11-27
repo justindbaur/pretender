@@ -2,6 +2,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Pretender.SourceGenerator.Parser;
 using Pretender.SourceGenerator.SetupArguments;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
@@ -10,12 +11,14 @@ namespace Pretender.SourceGenerator
     internal class SetupActionEmitter
     {
         private readonly ImmutableArray<SetupArgumentSpec> _setupArgumentSpecs;
+        private readonly KnownTypeSymbols _knownTypeSymbols;
 
-        public SetupActionEmitter(ITypeSymbol pretendType, IMethodSymbol setupMethod, ImmutableArray<SetupArgumentSpec> setupArgumentSpecs)
+        public SetupActionEmitter(ITypeSymbol pretendType, IMethodSymbol setupMethod, ImmutableArray<SetupArgumentSpec> setupArgumentSpecs, KnownTypeSymbols knownTypeSymbols)
         {
             PretendType = pretendType;
             SetupMethod = setupMethod;
             _setupArgumentSpecs = setupArgumentSpecs;
+            _knownTypeSymbols = knownTypeSymbols;
         }
 
         public ITypeSymbol PretendType { get; }
@@ -119,6 +122,7 @@ namespace Pretender.SourceGenerator
             }
             else
             {
+
                 // ReturningCompiledSetup<T1, T2>
                 returnObjectName = GenericName("ReturningCompiledSetup")
                     .AddTypeArgumentListArguments(
@@ -130,6 +134,11 @@ namespace Pretender.SourceGenerator
 
                 // TODO: Recursively mock?
                 ExpressionSyntax defaultValue;
+
+                // TODO: Is this safe?
+                // var namedType = (INamedTypeSymbol)SetupMethod.ReturnType;
+
+                // defaultValue = namedType.ToDefaultValueSyntax(_knownTypeSymbols);
 
                 if (SetupMethod.ReturnType.EqualsByName(["System", "Threading", "Tasks", "Task"]))
                 {
