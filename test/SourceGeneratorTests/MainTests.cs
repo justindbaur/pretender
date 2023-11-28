@@ -5,7 +5,7 @@ public partial class MainTests : TestBase
     [Fact]
     public async Task ReturningMethod()
     {
-        await RunAndCompareAsync($$"""
+        await RunAndComparePartialAsync($$"""
             var pretendSimpleInterface = Pretend.That<ISimpleInterface>();
             
             pretendSimpleInterface
@@ -16,11 +16,42 @@ public partial class MainTests : TestBase
             """);
     }
 
+    [Fact]
+    public async Task TaskOfTMethod()
+    {
+        var (result, _) = await RunGeneratorAsync($$"""
+            #nullable disable
+            using System;
+            using System.Threading.Tasks;
+            using Pretender;
+
+            public interface IMyInterface
+            {
+                Task<string> MethodAsync(string str);
+            }
+
+            public class TestClass
+            {
+                public TestClass()
+                {
+                    var pretend = Pretend.That<IMyInterface>();
+
+                    pretend.Setup(i => i.MethodAsync("Hi"));
+                }
+            }
+            """);
+
+        Assert.Equal(2, result.GeneratedSources.Length);
+
+        var text1 = result.GeneratedSources[0].SourceText.ToString();
+        var text2 = result.GeneratedSources[1].SourceText.ToString();
+    }
+
 
     [Fact]
     public async Task Test2()
     {
-        var (result, compilation) = await RunGeneratorAsync($$"""
+        var (result, compilation) = await RunPartialGeneratorAsync($$"""
             var pretendSimpleInterface = Pretend.That<SimpleAbstractClass>();
 
             var simpleInterface = pretendSimpleInterface.Create();
@@ -39,7 +70,7 @@ public partial class MainTests : TestBase
     [Fact]
     public async Task Test3()
     {
-        var (result, compilation) = await RunGeneratorAsync($$"""
+        var (result, compilation) = await RunPartialGeneratorAsync($$"""
             var pretendSimpleInterface = Pretend.That<ISimpleInterface>();
             
             pretendSimpleInterface

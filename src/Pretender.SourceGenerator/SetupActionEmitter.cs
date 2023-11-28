@@ -136,47 +136,47 @@ namespace Pretender.SourceGenerator
                 ExpressionSyntax defaultValue;
 
                 // TODO: Is this safe?
-                // var namedType = (INamedTypeSymbol)SetupMethod.ReturnType;
+                var namedType = (INamedTypeSymbol)SetupMethod.ReturnType;
 
-                // defaultValue = namedType.ToDefaultValueSyntax(_knownTypeSymbols);
+                defaultValue = namedType.ToDefaultValueSyntax(_knownTypeSymbols);
 
-                if (SetupMethod.ReturnType.EqualsByName(["System", "Threading", "Tasks", "Task"]))
-                {
-                    if (SetupMethod.ReturnType is INamedTypeSymbol namedType && namedType.TypeArguments.Length == 1)
-                    {
-                        // Task.FromResult<T>(default)
-                        defaultValue = KnownBlocks.TaskFromResult(
-                            namedType.TypeArguments[0].AsUnknownTypeSyntax(),
-                            LiteralExpression(SyntaxKind.DefaultLiteralExpression));
-                    }
-                    else
-                    {
-                        // Task.CompletedTask
-                        defaultValue = KnownBlocks.TaskCompletedTask;
-                    }
-                }
-                else if (SetupMethod.ReturnType.EqualsByName(["System", "Threading", "Tasks", "ValueTask"]))
-                {
-                    if (SetupMethod.ReturnType is INamedTypeSymbol namedType && namedType.TypeArguments.Length == 1)
-                    {
-                        // ValueTask.FromResult<T>(default)
-                        defaultValue = KnownBlocks.ValueTaskFromResult(
-                            namedType.TypeArguments[0].AsUnknownTypeSyntax(),
-                            LiteralExpression(SyntaxKind.DefaultLiteralExpression)
-                        );
-                    }
-                    else
-                    {
-                        // ValueTask.CompletedTask
-                        defaultValue = KnownBlocks.ValueTaskCompletedTask;
-                    }
-                }
-                else
-                {
-                    // TODO: Support custom awaitable
-                    // default
-                    defaultValue = LiteralExpression(SyntaxKind.DefaultLiteralExpression);
-                }
+                //if (SetupMethod.ReturnType.EqualsByName(["System", "Threading", "Tasks", "Task"]))
+                //{
+                //    if (SetupMethod.ReturnType is INamedTypeSymbol namedType && namedType.TypeArguments.Length == 1)
+                //    {
+                //        // Task.FromResult<T>(default)
+                //        defaultValue = KnownBlocks.TaskFromResult(
+                //            namedType.TypeArguments[0].AsUnknownTypeSyntax(),
+                //            LiteralExpression(SyntaxKind.DefaultLiteralExpression));
+                //    }
+                //    else
+                //    {
+                //        // Task.CompletedTask
+                //        defaultValue = KnownBlocks.TaskCompletedTask;
+                //    }
+                //}
+                //else if (SetupMethod.ReturnType.EqualsByName(["System", "Threading", "Tasks", "ValueTask"]))
+                //{
+                //    if (SetupMethod.ReturnType is INamedTypeSymbol namedType && namedType.TypeArguments.Length == 1)
+                //    {
+                //        // ValueTask.FromResult<T>(default)
+                //        defaultValue = KnownBlocks.ValueTaskFromResult(
+                //            namedType.TypeArguments[0].AsUnknownTypeSyntax(),
+                //            LiteralExpression(SyntaxKind.DefaultLiteralExpression)
+                //        );
+                //    }
+                //    else
+                //    {
+                //        // ValueTask.CompletedTask
+                //        defaultValue = KnownBlocks.ValueTaskCompletedTask;
+                //    }
+                //}
+                //else
+                //{
+                //    // TODO: Support custom awaitable
+                //    // default
+                //    defaultValue = LiteralExpression(SyntaxKind.DefaultLiteralExpression);
+                //}
 
                 cancellationToken.ThrowIfCancellationRequested();
 

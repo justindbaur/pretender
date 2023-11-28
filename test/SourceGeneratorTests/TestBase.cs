@@ -65,9 +65,9 @@ namespace SourceGeneratorTests
                 }
                 """;
 
-        public async Task<(GeneratorRunResult GeneratorResult, Compilation UpdateCompilation)> RunGeneratorAsync(string source)
+        public async Task<(GeneratorRunResult GeneratorResult, Compilation UpdateCompilation)> RunPartialGeneratorAsync(string source)
         {
-            var compilation = await CreateCompilationAsync(source);
+            var compilation = await CreateCompilationFromPartialAsync(source);
 
             var generator = new PretenderSourceGenerator().AsSourceGenerator();
             GeneratorDriver driver = CSharpGeneratorDriver.Create(
@@ -83,9 +83,27 @@ namespace SourceGeneratorTests
             return (Assert.Single(runResult.Results), updateCompilation);
         }
 
-        public async Task RunAndCompareAsync(string source, [CallerMemberName] string testMethodName = null!)
+        public async Task<(GeneratorRunResult GeneratorResult, Compilation UpdatedCompilation)> RunGeneratorAsync(string fullSource)
         {
-            var (result, _) = await RunGeneratorAsync(source);
+            var compilation = await CreateCompilationAsync(fullSource);
+
+            var generator = new PretenderSourceGenerator().AsSourceGenerator();
+            GeneratorDriver driver = CSharpGeneratorDriver.Create(
+                generators: [generator],
+                driverOptions: new GeneratorDriverOptions(IncrementalGeneratorOutputKind.None, trackIncrementalGeneratorSteps: true),
+                parseOptions: ParseOptions
+            );
+
+            driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var updateCompilation, out var diagnostics);
+
+            var runResult = driver.GetRunResult();
+
+            return (Assert.Single(runResult.Results), updateCompilation);
+        }
+
+        public async Task RunAndComparePartialAsync(string source, [CallerMemberName] string testMethodName = null!)
+        {
+            var (result, _) = await RunPartialGeneratorAsync(source);
             Assert.All(result.GeneratedSources, s =>
             {
                 CompareAgainstBaseline(s, testMethodName);
@@ -124,11 +142,20 @@ namespace SourceGeneratorTests
 #endif
         }
 
-        private Task<Compilation> CreateCompilationAsync(string source)
+        private Task<Compilation> CreateCompilationFromPartialAsync(string source)
         {
             var fullText = Base + CreateTestTemplate(source);
             var project = BaseProject
                 .AddDocument("MyTest.cs", SourceText.From(fullText, Encoding.UTF8))
+                .Project;
+
+            return project.GetCompilationAsync()!;
+        }
+
+        private static Task<Compilation> CreateCompilationAsync(string fullSource)
+        {
+            var project = BaseProject
+                .AddDocument("MyTest.cs", SourceText.From(fullSource, Encoding.UTF8))
                 .Project;
 
             return project.GetCompilationAsync()!;

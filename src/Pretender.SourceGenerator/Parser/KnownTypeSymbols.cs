@@ -11,10 +11,11 @@ namespace Pretender.SourceGenerator.Parser
         public INamedTypeSymbol? Pretend { get; }
         public INamedTypeSymbol? Pretend_Unbound { get; }
 
+        public INamedTypeSymbol String { get; }
         public INamedTypeSymbol? Task { get; }
-        public INamedTypeSymbol? TaskOfT { get; }
+        public INamedTypeSymbol? TaskOfT_Unbound { get; }
         public INamedTypeSymbol? ValueTask { get; }
-        public INamedTypeSymbol? ValueTaskOfT { get; }
+        public INamedTypeSymbol? ValueTaskOfT_Unbound { get; }
 
 
 
@@ -26,12 +27,11 @@ namespace Pretender.SourceGenerator.Parser
             Pretend = compilation.GetTypeByMetadataName("Pretender.Pretend`1");
             Pretend_Unbound = Pretend?.ConstructUnboundGenericType();
 
+            String = compilation.GetSpecialType(SpecialType.System_String);
             Task = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task");
-            // TODO: Create unbounded?
-            TaskOfT = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1");
+            TaskOfT_Unbound = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1")?.ConstructUnboundGenericType();
             ValueTask = compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask");
-            // TODO: Create unbounded?
-            ValueTaskOfT = compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask`1");
+            ValueTaskOfT_Unbound = compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask`1")?.ConstructUnboundGenericType();
         }
 
         public static bool IsPretend(INamedTypeSymbol type)
