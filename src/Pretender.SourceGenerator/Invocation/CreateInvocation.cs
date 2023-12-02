@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 using Pretender.SourceGenerator.Parser;
 
-namespace Pretender.SourceGenerator
+namespace Pretender.SourceGenerator.Invocation
 {
     internal class CreateInvocation
     {
@@ -36,7 +36,7 @@ namespace Pretender.SourceGenerator
             Debug.Assert(IsCandidateSyntaxNode(context.Node));
             return context.SemanticModel.GetOperation(context.Node, cancellationToken) is IInvocationOperation operation
                 && IsCreateOperation(operation, out var typeArguments)
-                ? new CreateInvocation(operation, typeArguments,new InterceptsLocationInfo(operation))
+                ? new CreateInvocation(operation, typeArguments, new InterceptsLocationInfo(operation))
                 : null;
         }
 

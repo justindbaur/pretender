@@ -6,7 +6,7 @@ using Pretender.SourceGenerator.Parser;
 using Pretender.SourceGenerator.SetupArguments;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
-namespace Pretender.SourceGenerator
+namespace Pretender.SourceGenerator.Emitter
 {
     internal class SetupActionEmitter
     {

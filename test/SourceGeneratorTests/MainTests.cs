@@ -25,6 +25,8 @@ public partial class MainTests : TestBase
             using System.Threading.Tasks;
             using Pretender;
 
+            namespace TaskOfTMethodNamespace;
+
             public interface IMyInterface
             {
                 Task<string> MethodAsync(string str);

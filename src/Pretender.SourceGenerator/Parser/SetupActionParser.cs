@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Operations;
+using Pretender.SourceGenerator.Emitter;
 using Pretender.SourceGenerator.SetupArguments;
 
 namespace Pretender.SourceGenerator.Parser

@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Pretender.SourceGenerator.Emitter;
+using Pretender.SourceGenerator.Invocation;
 using Pretender.SourceGenerator.Parser;
 
 namespace Pretender.SourceGenerator
@@ -22,43 +23,40 @@ namespace Pretender.SourceGenerator
                         : null);
 
             #region Pretend
-            IncrementalValuesProvider<PretendEntrypoint> pretendsWithDiagnostics =
+            IncrementalValuesProvider<(PretendEmitter? Emitter, ImmutableArray<Diagnostic>? Diagnostics)> pretends =
                  context.SyntaxProvider.CreateSyntaxProvider(
                      predicate: (node, _) => PretendInvocation.IsCandidateSyntaxNode(node),
-                     transform: static (context, token) =>
+                     transform: PretendInvocation.Create)
+                     .Where(static p => p != null)
+                     .Combine(compilationData)
+                     .Select(static (tuple, cancellationToken) =>
                      {
-                         var operation = context.SemanticModel.GetOperation(context.Node, token);
-                         // TODO: I think this is where I need to filter out false positives
-                         if (operation.IsInvocationOperation(out var invocationOperation))
+                         if (tuple.Right is not CompilationData compilationData)
                          {
-                             token.ThrowIfCancellationRequested();
-
-                             return PretendEntrypoint.FromMethodGeneric(invocationOperation!);
+                             return (null, null);
                          }
 
-                         // TODO: Check for constructor invocation operation
-                         // and create the PretendEntrypoint with that information
-                         return null;
+                         // TODO: Create Parser
+                         var parser = new PretendParser(tuple.Left!, compilationData);
+                         return parser.Parse(cancellationToken);
                      })
-                     .Where(static p => p != null)
-                     .WithTrackingName("FindPretendGenerics")!;
-
-            context.RegisterSourceOutput(pretendsWithDiagnostics, static (context, pretend) =>
-            {
-                foreach (var diagnostic in pretend!.Diagnostics)
-                {
-                    context.ReportDiagnostic(diagnostic);
-                }
-            });
-
-            var pretends = pretendsWithDiagnostics
-                .Where(p => p!.Diagnostics.Count == 0)
-                .GroupWith(s => s.InvocationLocation, PretendEntrypointComparer.TypeSymbol);
+                     .WithTrackingName("Pretend");
 
             context.RegisterSourceOutput(pretends, static (context, pretend) =>
             {
-                var compilationUnit = pretend.Source.GetCompilationUnit(context.CancellationToken);
-                context.AddSource($"Pretender.Type.{pretend.Source.TypeToPretend.ToPretendName()}.g.cs", compilationUnit.GetText(Encoding.UTF8));
+                if (pretend.Diagnostics is ImmutableArray<Diagnostic> diagnostics)
+                {
+                    foreach (var diagnostic in diagnostics)
+                    {
+                        context.ReportDiagnostic(diagnostic);
+                    }
+                }
+
+                if (pretend.Emitter is PretendEmitter emitter)
+                {
+                    var compilationUnit = emitter.Emit(context.CancellationToken);
+                    context.AddSource($"Pretender.Type.{emitter.PretendType.ToPretendName()}.g.cs", compilationUnit.GetText(Encoding.UTF8));
+                }
             });
             #endregion
 

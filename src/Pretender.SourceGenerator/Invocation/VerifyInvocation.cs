@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 using Pretender.SourceGenerator.Parser;
 
-namespace Pretender.SourceGenerator
+namespace Pretender.SourceGenerator.Invocation
 {
     // This should be a simple class just holding some information, deeper introspection to find diagnostics should
     // be done with a type cache

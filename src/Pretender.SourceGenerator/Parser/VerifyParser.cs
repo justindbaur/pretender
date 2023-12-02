@@ -1,6 +1,7 @@
 ﻿using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Pretender.SourceGenerator.Emitter;
+using Pretender.SourceGenerator.Invocation;
 using static Pretender.SourceGenerator.PretenderSourceGenerator;
 
 namespace Pretender.SourceGenerator.Parser

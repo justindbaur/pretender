@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 using Pretender.SourceGenerator.Parser;
 
-namespace Pretender.SourceGenerator
+namespace Pretender.SourceGenerator.Invocation
 {
     internal class SetupInvocation
     {

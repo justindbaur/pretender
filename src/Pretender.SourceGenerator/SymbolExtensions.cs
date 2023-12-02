@@ -9,6 +9,7 @@ namespace Pretender.SourceGenerator
 {
     internal static class SymbolExtensions
     {
+        // TODO: Replace many of these with KnownTypeSymbols
         public static bool EqualsByName(this ITypeSymbol type, string[] name)
         {
             var length = name.Length;
@@ -52,10 +53,12 @@ namespace Pretender.SourceGenerator
         public static ExpressionSyntax ToDefaultValueSyntax(this INamedTypeSymbol type, KnownTypeSymbols knownTypeSymbols)
         {
             // They have explicitly annotated this type as nullable, so return null
-            if (type.NullableAnnotation != NullableAnnotation.NotAnnotated)
+            if (type.NullableAnnotation == NullableAnnotation.Annotated)
             {
                 return LiteralExpression(SyntaxKind.DefaultLiteralExpression);
             }
+
+            var nullableEnabled = type.NullableAnnotation != NullableAnnotation.None;
 
             var comparer = SymbolEqualityComparer.Default;
 

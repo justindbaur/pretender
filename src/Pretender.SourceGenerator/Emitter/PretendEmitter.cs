@@ -1,46 +1,25 @@
 ﻿using System.Collections.Immutable;
-using System.Diagnostics;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Operations;
-
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
-namespace Pretender.SourceGenerator
+namespace Pretender.SourceGenerator.Emitter
 {
-    internal class PretendEntrypoint
+    internal class PretendEmitter
     {
-        public static PretendEntrypoint FromMethodGeneric(IInvocationOperation operation)
+        private readonly ITypeSymbol _pretendType;
+        private readonly bool _fillExisting;
+
+        public PretendEmitter(ITypeSymbol pretendType, bool fillExisting)
         {
-            Debug.Assert(operation.TargetMethod.TypeArguments.Length == 1, "This should have been asserted already");
-            var genericLocation = ((GenericNameSyntax)((MemberAccessExpressionSyntax)((InvocationExpressionSyntax)operation.Syntax).Expression).Name).TypeArgumentList.Arguments[0].GetLocation();
-            var typeArgument = operation.TargetMethod.TypeArguments[0];
-            return new PretendEntrypoint(typeArgument,
-                genericLocation);
+            _pretendType = pretendType;
+            _fillExisting = fillExisting;
         }
 
-        public PretendEntrypoint(ITypeSymbol typeToPretend, Location invocationLocation)
-        {
-            TypeToPretend = typeToPretend;
+        public ITypeSymbol PretendType => _pretendType;
 
-            InvocationLocation = invocationLocation;
-
-            // TODO: Do more diagnostics
-            if (TypeToPretend.IsSealed)
-            {
-                Diagnostics.Add(Diagnostic.Create(
-                    DiagnosticDescriptors.UnableToPretendSealedType,
-                    invocationLocation,
-                    TypeToPretend));
-            }
-        }
-
-        public ITypeSymbol TypeToPretend { get; }
-        public Location InvocationLocation { get; }
-        public List<Diagnostic> Diagnostics { get; } = new List<Diagnostic>();
-
-        public CompilationUnitSyntax GetCompilationUnit(CancellationToken token)
+        public CompilationUnitSyntax Emit(CancellationToken token)
         {
             var pretendFieldAssignment = ExpressionStatement(
                 AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
@@ -53,7 +32,7 @@ namespace Pretender.SourceGenerator
 
             token.ThrowIfCancellationRequested();
 
-            var typeMembers = TypeToPretend.GetMembers();
+            var typeMembers = _pretendType.GetMembers();
 
             foreach (var member in typeMembers)
             {
@@ -139,7 +118,7 @@ namespace Pretender.SourceGenerator
 
             methodInfoFields.Add(instanceField);
 
-            var classDeclaration = TypeToPretend.ScaffoldImplementation(new ScaffoldTypeOptions
+            var classDeclaration = _pretendType.ScaffoldImplementation(new ScaffoldTypeOptions
             {
                 CustomFields = methodInfoFields.ToImmutableArray(),
                 AddMethodBody = CreateMethodBody,
@@ -186,7 +165,7 @@ namespace Pretender.SourceGenerator
 
             return InvocationExpression(MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
-                TypeOfExpression(ParseTypeName(TypeToPretend.ToFullDisplayString())),
+                TypeOfExpression(ParseTypeName(_pretendType.ToFullDisplayString())),
                 IdentifierName(afterTypeOfMethod)))
                 .AddArgumentListArguments(Argument(NameOfExpression(name)));
         }
@@ -223,7 +202,7 @@ namespace Pretender.SourceGenerator
         private TypeSyntax GetGenericPretendType()
         {
             return GenericName(Identifier("Pretend"),
-                    TypeArgumentList(SingletonSeparatedList(ParseTypeName(TypeToPretend.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)))));
+                    TypeArgumentList(SingletonSeparatedList(ParseTypeName(_pretendType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)))));
         }
 
         private FieldDeclarationSyntax GetStaticMethodCacheField(IMethodSymbol method, int index)
@@ -233,7 +212,7 @@ namespace Pretender.SourceGenerator
                 .AddModifiers(Token(SyntaxKind.PrivateKeyword), Token(SyntaxKind.StaticKeyword), Token(SyntaxKind.ReadOnlyKeyword))
                 .AddDeclarationVariables(VariableDeclarator(Identifier($"__methodInfo_{method.Name}_{index}"))
                     .WithInitializer(EqualsValueClause(
-                        InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, TypeOfExpression(ParseTypeName(TypeToPretend.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat))), IdentifierName("GetMethod")))
+                        InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, TypeOfExpression(ParseTypeName(_pretendType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat))), IdentifierName("GetMethod")))
                         .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(ParseExpression($"nameof({method.Name})"))))))));
         }
 
@@ -244,7 +223,7 @@ namespace Pretender.SourceGenerator
             // This is using the new collection expression syntax in C# 12
             // [arg1, arg2, arg3]
             var collectionExpression = CollectionExpression()
-                .AddElements(method.Parameters.Select(p 
+                .AddElements(method.Parameters.Select(p
                     => ExpressionElement(IdentifierName(p.Name))).ToArray());
 
             // object?[]
@@ -294,7 +273,7 @@ namespace Pretender.SourceGenerator
             var refAndOutParameters = method.Parameters
                 .Where(p => p.RefKind == RefKind.Ref || p.RefKind == RefKind.Out);
 
-            
+
 
             foreach (var p in refAndOutParameters)
             {

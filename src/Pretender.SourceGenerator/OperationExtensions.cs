@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-using Microsoft.CodeAnalysis.CSharp;
+﻿using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 
@@ -12,6 +8,7 @@ namespace Pretender.SourceGenerator
 {
     internal static class OperationExtensions
     {
+        // TODO: Take KnownTypeSymbols
         public static LiteralExpressionSyntax ToLiteralExpression(this ILiteralOperation operation)
         {
             if (operation.Type is null || !operation.ConstantValue.HasValue)

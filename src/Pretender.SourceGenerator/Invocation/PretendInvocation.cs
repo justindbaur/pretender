@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 using Pretender.SourceGenerator.Parser;
 
-namespace Pretender.SourceGenerator
+namespace Pretender.SourceGenerator.Invocation
 {
     internal class PretendInvocation
     {
@@ -51,6 +51,7 @@ namespace Pretender.SourceGenerator
                 cancellationToken.ThrowIfCancellationRequested();
                 return CreateFromGeneric(invocation);
             }
+
             // TODO: Support attribute
 
             return null;
@@ -68,7 +69,16 @@ namespace Pretender.SourceGenerator
                 return null;
             }
 
-            return new PretendInvocation(operation.TargetMethod.TypeArguments[0], operation.Syntax.GetLocation(), false);
+            return CreateFromTypeSymbol(
+                operation.TargetMethod.TypeArguments[0], 
+                operation.Syntax.GetLocation(),
+                fillExisting: false);
+        }
+
+        private static PretendInvocation? CreateFromTypeSymbol(ITypeSymbol typeSymbol, Location location, bool fillExisting)
+        {
+            // TODO: Maybe check that ITypeSymbol is INamedTypeSymbol?
+            return new PretendInvocation(typeSymbol, location, fillExisting);
         }
     }
 }
