@@ -18,12 +18,10 @@ namespace Pretender.SourceGenerator.Emitter
         }
 
         // TODO: Run cancellationToken a lot more
-        public MemberDeclarationSyntax[] Emit(int index, CancellationToken cancellationToken)
+        public MemberDeclarationSyntax Emit(int index, CancellationToken cancellationToken)
         {
             var setupMethod = _setupActionEmitter.SetupMethod;
             var pretendType = _setupActionEmitter.PretendType;
-
-            var allMembers = new List<MemberDeclarationSyntax>();
 
             var interceptsLocation = new InterceptsLocationInfo(_setupInvocation);
 
@@ -37,7 +35,7 @@ namespace Pretender.SourceGenerator.Emitter
 
             var setupCreatorInvocation = _setupActionEmitter.CreateSetupGetter(cancellationToken);
 
-            var fullSetupMethod = MethodDeclaration(returnType, $"Setup{index}")
+            return MethodDeclaration(returnType, $"Setup{index}")
                 .WithBody(Block(ReturnStatement(setupCreatorInvocation)))
                 .WithParameterList(ParameterList(SeparatedList(new[]
                 {
@@ -51,9 +49,6 @@ namespace Pretender.SourceGenerator.Emitter
                 .WithModifiers(TokenList(Token(SyntaxKind.InternalKeyword), Token(SyntaxKind.StaticKeyword)))
                 .WithAttributeLists(SingletonList(AttributeList(
                     SingletonSeparatedList(interceptsLocation.ToAttributeSyntax()))));
-
-            allMembers.Add(fullSetupMethod);
-            return [.. allMembers];
         }
     }
 }

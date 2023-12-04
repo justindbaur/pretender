@@ -41,7 +41,7 @@ namespace Pretender.SourceGenerator
                 });
 
             #region Pretend
-            IncrementalValuesProvider<(PretendEmitter? Emitter, ImmutableArray<Diagnostic>? Diagnostics)> pretendsWithDiagnostics =
+            IncrementalValuesProvider<(PretendEmitter? Emitter, ImmutableArray<Diagnostic>? Diagnostics)> pretendEmittersWithDiagnostics =
                  context.SyntaxProvider.CreateSyntaxProvider(
                      predicate: (node, _) => PretendInvocation.IsCandidateSyntaxNode(node),
                      transform: PretendInvocation.Create)
@@ -56,17 +56,11 @@ namespace Pretender.SourceGenerator
                      })
                      .WithTrackingName("Pretend");
 
-            var pretends = ReportDiagnostics(context, pretendsWithDiagnostics);
-
-            context.RegisterSourceOutput(pretends, static (context, emitter) =>
-            {
-                var compilationUnit = emitter.Emit(context.CancellationToken);
-                context.AddSource($"Pretender.Type.{emitter.PretendType.ToPretendName()}.g.cs", compilationUnit.GetText(Encoding.UTF8));
-            });
+            var pretendEmitters = ReportDiagnostics(context, pretendEmittersWithDiagnostics);
             #endregion
 
             #region Setup
-            IncrementalValuesProvider<(SetupEmitter? Emitter, ImmutableArray<Diagnostic>? Diagnostics)> setups =
+            IncrementalValuesProvider<(SetupEmitter? Emitter, ImmutableArray<Diagnostic>? Diagnostics)> setupEmittersWithDiagnostics =
                 context.SyntaxProvider.CreateSyntaxProvider(
                     predicate: static (node, _) => SetupInvocation.IsCandidateSyntaxNode(node),
                     transform: SetupInvocation.Create)
@@ -80,56 +74,11 @@ namespace Pretender.SourceGenerator
                 })
                 .WithTrackingName("Setup");
 
-            context.RegisterSourceOutput(setups.Collect(), static (context, setups) =>
-            {
-                var members = new List<MemberDeclarationSyntax>();
-                for (var i = 0; i < setups.Length; i++)
-                {
-                    var setup = setups[i];
-
-                    if (setup.Diagnostics is ImmutableArray<Diagnostic> diagnostics)
-                    {
-                        foreach (var diagnostic in diagnostics)
-                        {
-                            context.ReportDiagnostic(diagnostic);
-                        }
-                    }
-
-                    if (setup.Emitter is SetupEmitter emitter)
-                    {
-                        members.AddRange(emitter.Emit(i, context.CancellationToken));
-                    }
-                }
-
-                var classDeclaration = SyntaxFactory.ClassDeclaration("SetupInterceptors")
-                    .WithModifiers(SyntaxFactory.TokenList(
-                        SyntaxFactory.Token(SyntaxKind.FileKeyword),
-                        SyntaxFactory.Token(SyntaxKind.StaticKeyword)))
-                    .AddMembers([.. members]);
-
-                var namespaceDeclaration = SyntaxFactory.NamespaceDeclaration(SyntaxFactory.ParseName("Pretender.SourceGeneration"))
-                    .AddMembers(classDeclaration)
-                    .AddUsings(
-                        SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System")),
-                        KnownBlocks.CompilerServicesUsing,
-                        SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System.Linq.Expressions")),
-                        SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System.Threading.Tasks")),
-                        KnownBlocks.PretenderUsing,
-                        KnownBlocks.PretenderInternalsUsing
-                    );
-
-                var il = KnownBlocks.InterceptsLocationAttribute;
-
-                var compilationUnit = SyntaxFactory.CompilationUnit()
-                    .AddMembers(il, namespaceDeclaration)
-                    .NormalizeWhitespace();
-
-                context.AddSource("Pretender.Setups.g.cs", compilationUnit.GetText(Encoding.UTF8));
-            });
+            var setups = ReportDiagnostics(context, setupEmittersWithDiagnostics);
             #endregion
 
             #region Verify
-            IncrementalValuesProvider<(VerifyEmitter? Emitter, ImmutableArray<Diagnostic>? Diagnostics)> verifyCallsWithDiagnostics =
+            IncrementalValuesProvider<(VerifyEmitter? Emitter, ImmutableArray<Diagnostic>? Diagnostics)> verifyEmittersWithDiagnostics =
                 context.SyntaxProvider.CreateSyntaxProvider(
                     predicate: (node, _) => VerifyInvocation.IsCandidateSyntaxNode(node),
                     transform: VerifyInvocation.Create)
@@ -144,30 +93,11 @@ namespace Pretender.SourceGenerator
                 })
                 .WithTrackingName("Verify");
 
-            var verifyEmitters = ReportDiagnostics(context, verifyCallsWithDiagnostics);
-
-            context.RegisterSourceOutput(verifyEmitters.Collect(), (context, inputs) =>
-            {
-                var methods = new List<MethodDeclarationSyntax>();
-                for (var i = 0; i < inputs.Length; i++)
-                {
-                    var input = inputs[i];
-
-                    var method = input.Emit(0, context.CancellationToken);
-                    methods.Add(method);
-                }
-
-                if (methods.Count > 0)
-                {
-                    // Emit all methods
-                    var compilationUnit = CommonSyntax.CreateVerifyCompilationUnit([.. methods]);
-                    context.AddSource("Pretender.Verifies.g.cs", compilationUnit.GetText(Encoding.UTF8));
-                }
-            });
+            var verifyEmitters = ReportDiagnostics(context, verifyEmittersWithDiagnostics);
             #endregion
 
             #region Create
-            var createCalls = context.SyntaxProvider.CreateSyntaxProvider(
+            var createEmittersWithDiagnostics = context.SyntaxProvider.CreateSyntaxProvider(
                 predicate: (node, _) => CreateInvocation.IsCandidateSyntaxNode(node),
                 transform: CreateInvocation.Create)
                 .Where(i => i is not null)!
@@ -180,36 +110,22 @@ namespace Pretender.SourceGenerator
                 })
                 .WithTrackingName("Create");
 
-            var createEmitters = ReportDiagnostics(context, createCalls);
-
-            context.RegisterSourceOutput(createEmitters, static (context, emitter) =>
-            {
-                // TODO: Don't actually need a list here
-                var members = new List<MemberDeclarationSyntax>();
-
-                string? pretendName = null;
-
-                pretendName ??= emitter.Operation.TargetMethod.ReturnType.ToPretendName();
-                members.Add(emitter.Emit(context.CancellationToken));
-
-                if (members.Any())
-                {
-                    var createClass = SyntaxFactory.ClassDeclaration("CreateInterceptors")
-                        .AddModifiers(SyntaxFactory.Token(SyntaxKind.FileKeyword), SyntaxFactory.Token(SyntaxKind.StaticKeyword))
-                        .WithMembers(SyntaxFactory.List(members));
-
-                    var createNamespace = KnownBlocks.OurNamespace
-                        .AddMembers(createClass)
-                        .AddUsings(KnownBlocks.CompilerServicesUsing, KnownBlocks.PretenderUsing);
-
-                    var cu = SyntaxFactory.CompilationUnit()
-                        .AddMembers(KnownBlocks.InterceptsLocationAttribute, createNamespace)
-                        .NormalizeWhitespace();
-
-                    context.AddSource($"Pretender.Creates.{pretendName}.g.cs", cu.GetText(Encoding.UTF8));
-                }
-            });
+            var createEmitters = ReportDiagnostics(context, createEmittersWithDiagnostics);
             #endregion
+
+            context.RegisterSourceOutput(
+                pretendEmitters.Collect()
+                .Combine(setups.Collect())
+                .Combine(verifyEmitters.Collect())
+                .Combine(createEmitters.Collect()), (context, emitters) =>
+            {
+                var (((pretends, setups), verifies), creates) = emitters;
+                var grandEmitter = new GrandEmitter(pretends, setups, verifies, creates);
+
+                var compilationUnit = grandEmitter.Emit(context.CancellationToken);
+
+                context.AddSource("Pretender.g.cs", compilationUnit.GetText(Encoding.UTF8));
+            });
         }
 
         private static IncrementalValuesProvider<T> ReportDiagnostics<T>(IncrementalGeneratorInitializationContext context, IncrementalValuesProvider<(T? Emitter, ImmutableArray<Diagnostic>? Diagnostics)> source)
