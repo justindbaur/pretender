@@ -36,7 +36,7 @@ namespace Pretender.Matchers
             return false;
         }
 
-        private List<IMatcher> _matchers;
+        private List<IMatcher>? _matchers;
 
         public void OnMatch(IMatcher matcher)
         {

@@ -2,30 +2,22 @@
 using Microsoft.CodeAnalysis;
 using Pretender.SourceGenerator.Emitter;
 using Pretender.SourceGenerator.Invocation;
-using static Pretender.SourceGenerator.PretenderSourceGenerator;
 
 namespace Pretender.SourceGenerator.Parser
 {
     internal class VerifyParser
     {
-        private readonly bool _isLanguageVersionSupported;
-        private readonly KnownTypeSymbols _knownTypeSymbols;
         private readonly VerifyInvocation _verifyInvocation;
+        private readonly KnownTypeSymbols _knownTypeSymbols;
 
-        public VerifyParser(VerifyInvocation verifyInvocation, CompilationData compilationData)
+        public VerifyParser(VerifyInvocation verifyInvocation, KnownTypeSymbols knownTypeSymbols)
         {
-            _isLanguageVersionSupported = compilationData.LanguageVersionIsSupported;
-            _knownTypeSymbols = compilationData.TypeSymbols!;
             _verifyInvocation = verifyInvocation;
+            _knownTypeSymbols = knownTypeSymbols;
         }
 
         public (VerifyEmitter? VerifyEmitter, ImmutableArray<Diagnostic>? Diagnostics) Parse(CancellationToken cancellationToken)
         {
-            if (!_isLanguageVersionSupported)
-            {
-                return (null, ImmutableArray.Create(Diagnostic.Create(DiagnosticDescriptors.UnsupportedLanguageVersion, null)));
-            }
-
             cancellationToken.ThrowIfCancellationRequested();
 
             var operation = _verifyInvocation.Operation;

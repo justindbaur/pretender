@@ -17,4 +17,8 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0-1.final" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!--Include all the settings classes-->
+    <Compile Include="../Pretender/Settings/*.cs" LinkBase="Shared/Settings" />
+  </ItemGroup>
 </Project>

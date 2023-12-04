@@ -19,11 +19,13 @@ public partial class MainTests : TestBase
     [Fact]
     public async Task TaskOfTMethod()
     {
-        var (result, _) = await RunGeneratorAsync($$"""
-            #nullable disable
+        var (result, c) = await RunGeneratorAsync($$"""
             using System;
             using System.Threading.Tasks;
             using Pretender;
+            using Pretender.Settings;
+
+            [assembly: PretenderSettings(Behavior = PretendBehavior.AlwaysPretend)]
 
             namespace TaskOfTMethodNamespace;
 

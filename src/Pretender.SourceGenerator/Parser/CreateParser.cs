@@ -2,7 +2,6 @@
 using Microsoft.CodeAnalysis;
 using Pretender.SourceGenerator.Emitter;
 using Pretender.SourceGenerator.Invocation;
-using static Pretender.SourceGenerator.PretenderSourceGenerator;
 
 namespace Pretender.SourceGenerator.Parser
 {
@@ -11,26 +10,20 @@ namespace Pretender.SourceGenerator.Parser
         private readonly CreateInvocation _createInvocation;
         private readonly ImmutableArray<InterceptsLocationInfo> _locations;
         private readonly int _index;
-        private readonly bool _isLanguageVersionSupported;
         private readonly KnownTypeSymbols _knownTypeSymbols;
 
-        public CreateParser(CreateInvocation createInvocation, ImmutableArray<InterceptsLocationInfo> locations, int index, CompilationData compilationData)
+        public CreateParser(CreateInvocation createInvocation, ImmutableArray<InterceptsLocationInfo> locations, int index, KnownTypeSymbols knownTypeSymbols)
         {
             _createInvocation = createInvocation;
             _locations = locations;
             _index = index;
-            _isLanguageVersionSupported = compilationData.LanguageVersionIsSupported;
-            _knownTypeSymbols = compilationData.TypeSymbols!;
+            _knownTypeSymbols = knownTypeSymbols;
         }
 
         public (CreateEmitter? Emitter, ImmutableArray<Diagnostic>? Diagnostics) Parse(CancellationToken cancellationToken)
         {
-            if (!_isLanguageVersionSupported)
-            {
-                return (null, ImmutableArray.Create(Diagnostic.Create(DiagnosticDescriptors.UnsupportedLanguageVersion, null)));
-            }
-
-            // TODO:Do deeper introspection to make sure the supplied args match with supplied type arguments
+            cancellationToken.ThrowIfCancellationRequested();
+            // TODO: Do deeper introspection to make sure the supplied args match with supplied type arguments
             // and we should provide the constructor to use to the emitter maybe
             var emitter = new CreateEmitter(
                 _createInvocation.Operation,

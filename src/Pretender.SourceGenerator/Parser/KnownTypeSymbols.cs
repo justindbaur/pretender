@@ -5,7 +5,7 @@ namespace Pretender.SourceGenerator.Parser
 {
     internal sealed class KnownTypeSymbols
     {
-        public CSharpCompilation Compilation { get; }
+        public Compilation Compilation { get; }
 
         // INamedTypeSymbols
         public INamedTypeSymbol? Pretend { get; }
@@ -17,9 +17,16 @@ namespace Pretender.SourceGenerator.Parser
         public INamedTypeSymbol? ValueTask { get; }
         public INamedTypeSymbol? ValueTaskOfT_Unbound { get; }
 
+        // Known abstractions with fakes
+        public INamedTypeSymbol? MicrosoftExtensionsLoggingILogger { get; }
+        public INamedTypeSymbol? MicrosoftExtensionsLoggingTestingFakeLogger { get; }
+        public INamedTypeSymbol? MicrosoftExtensionsLoggingAbstractionsNullLogger {  get; }
+
+        public INamedTypeSymbol? MicrosoftExtensionsLoggingILoggerOfT { get; }
 
 
-        public KnownTypeSymbols(CSharpCompilation compilation)
+
+        public KnownTypeSymbols(Compilation compilation)
         {
             Compilation = compilation;
 
@@ -32,6 +39,22 @@ namespace Pretender.SourceGenerator.Parser
             TaskOfT_Unbound = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1")?.ConstructUnboundGenericType();
             ValueTask = compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask");
             ValueTaskOfT_Unbound = compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask`1")?.ConstructUnboundGenericType();
+
+            // Fakes
+            // ILogger
+            MicrosoftExtensionsLoggingILogger = compilation.GetTypeByMetadataName("Microsoft.Extensions.Logging.ILogger");
+            MicrosoftExtensionsLoggingTestingFakeLogger = compilation.GetTypeByMetadataName("Microsoft.Extensions.Logging.Testing.FakeLogger");
+            MicrosoftExtensionsLoggingAbstractionsNullLogger = compilation.GetTypeByMetadataName("Microsoft.Extensions.Logging.Abstractions.NullLogger");
+
+            // ILogger<T>
+            MicrosoftExtensionsLoggingILoggerOfT = compilation.GetTypeByMetadataName("Microsoft.Extensions.Logging.ILogger`1");
+            MicrosoftExtensionsLoggingTestingFakeLogger = compilation.GetTypeByMetadataName("Microsoft.Extensions.Logging.Testing.FakeLogger`1");
+            MicrosoftExtensionsLoggingAbstractionsNullLogger = compilation.GetTypeByMetadataName("Microsoft.Extensions.Logging.Abstractions.NullLogger`1");
+
+            // ILoggerProvider
+
+            // TODO: data protection
+            // TODO: FakeTimeProvider
         }
 
         public static bool IsPretend(INamedTypeSymbol type)

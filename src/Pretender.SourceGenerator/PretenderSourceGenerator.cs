@@ -15,48 +15,53 @@ namespace Pretender.SourceGenerator
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
             // TODO: Refactor our region use
-            // TODO: Create compilation data
-            IncrementalValueProvider<CompilationData?> compilationData =
+            IncrementalValueProvider<KnownTypeSymbols> knownTypeSymbols =
                 context.CompilationProvider
-                    .Select((compilation, _) => compilation.Options is CSharpCompilationOptions
-                        ? new CompilationData((CSharpCompilation)compilation)
-                        : null);
+                    .Select((compilation, _) => new KnownTypeSymbols(compilation));
+
+            // TODO: Read settings off of 
+            IncrementalValueProvider<PretenderSettings> settings = context.SyntaxProvider.ForAttributeWithMetadataName(
+                "Pretender.PretenderSettingsAttribute",
+                predicate: static (node, _) => true,
+                transform: static (context, _) => context.Attributes[0])
+                .Collect()
+                .Select(static (settings, _) =>
+                {
+                    if (settings.IsEmpty)
+                    {
+                        return PretenderSettings.Default;
+                    }
+
+                    if (settings.Length > 1)
+                    {
+                        throw new InvalidOperationException("Only one instance of PretenderSettingsAttribute is expected on the assembly.");
+                    }
+
+                    return PretenderSettings.FromAttribute(settings[0]);
+                });
 
             #region Pretend
-            IncrementalValuesProvider<(PretendEmitter? Emitter, ImmutableArray<Diagnostic>? Diagnostics)> pretends =
+            IncrementalValuesProvider<(PretendEmitter? Emitter, ImmutableArray<Diagnostic>? Diagnostics)> pretendsWithDiagnostics =
                  context.SyntaxProvider.CreateSyntaxProvider(
                      predicate: (node, _) => PretendInvocation.IsCandidateSyntaxNode(node),
                      transform: PretendInvocation.Create)
                      .Where(static p => p != null)
-                     .Combine(compilationData)
+                     .Combine(knownTypeSymbols)
+                     .Combine(settings)
                      .Select(static (tuple, cancellationToken) =>
                      {
-                         if (tuple.Right is not CompilationData compilationData)
-                         {
-                             return (null, null);
-                         }
-
-                         // TODO: Create Parser
-                         var parser = new PretendParser(tuple.Left!, compilationData);
+                         var ((invocation, knownTypeSymbols), settings) = tuple;
+                         var parser = new PretendParser(invocation!, knownTypeSymbols, settings);
                          return parser.Parse(cancellationToken);
                      })
                      .WithTrackingName("Pretend");
 
-            context.RegisterSourceOutput(pretends, static (context, pretend) =>
-            {
-                if (pretend.Diagnostics is ImmutableArray<Diagnostic> diagnostics)
-                {
-                    foreach (var diagnostic in diagnostics)
-                    {
-                        context.ReportDiagnostic(diagnostic);
-                    }
-                }
+            var pretends = ReportDiagnostics(context, pretendsWithDiagnostics);
 
-                if (pretend.Emitter is PretendEmitter emitter)
-                {
-                    var compilationUnit = emitter.Emit(context.CancellationToken);
-                    context.AddSource($"Pretender.Type.{emitter.PretendType.ToPretendName()}.g.cs", compilationUnit.GetText(Encoding.UTF8));
-                }
+            context.RegisterSourceOutput(pretends, static (context, emitter) =>
+            {
+                var compilationUnit = emitter.Emit(context.CancellationToken);
+                context.AddSource($"Pretender.Type.{emitter.PretendType.ToPretendName()}.g.cs", compilationUnit.GetText(Encoding.UTF8));
             });
             #endregion
 
@@ -66,15 +71,10 @@ namespace Pretender.SourceGenerator
                     predicate: static (node, _) => SetupInvocation.IsCandidateSyntaxNode(node),
                     transform: SetupInvocation.Create)
                 .Where(i => i is not null)
-                .Combine(compilationData)
+                .Combine(knownTypeSymbols)
                 .Select(static (tuple, token) =>
                 {
-                    if (tuple.Right is not CompilationData compilationData)
-                    {
-                        return (null, null);
-                    }
-
-                    var parser = new SetupParser(tuple.Left!, compilationData);
+                    var parser = new SetupParser(tuple.Left!, tuple.Right);
 
                     return parser.Parse(token);
                 })
@@ -134,41 +134,27 @@ namespace Pretender.SourceGenerator
                     predicate: (node, _) => VerifyInvocation.IsCandidateSyntaxNode(node),
                     transform: VerifyInvocation.Create)
                 .Where(vi => vi is not null)
-                .Combine(compilationData)
+                .Combine(knownTypeSymbols)
                 .Select((tuple, cancellationToken) =>
                 {
-                    if (tuple.Right is not CompilationData compilationData)
-                    {
-                        return (null, null);
-                    }
-
                     // Create new VerifySpec
-                    var parser = new VerifyParser(tuple.Left!, compilationData);
+                    var parser = new VerifyParser(tuple.Left!, tuple.Right);
 
                     return parser.Parse(cancellationToken);
                 })
                 .WithTrackingName("Verify");
 
-            context.RegisterSourceOutput(verifyCallsWithDiagnostics.Collect(), (context, inputs) =>
+            var verifyEmitters = ReportDiagnostics(context, verifyCallsWithDiagnostics);
+
+            context.RegisterSourceOutput(verifyEmitters.Collect(), (context, inputs) =>
             {
                 var methods = new List<MethodDeclarationSyntax>();
                 for (var i = 0; i < inputs.Length; i++)
                 {
                     var input = inputs[i];
-                    if (input.Diagnostics is ImmutableArray<Diagnostic> diagnostics)
-                    {
-                        foreach (var diagnostic in diagnostics)
-                        {
-                            context.ReportDiagnostic(diagnostic);
-                        }
-                    }
 
-                    if (input.Emitter is VerifyEmitter emitter)
-                    {
-                        // TODO: Emit VerifyMethod
-                        var method = emitter.Emit(0, context.CancellationToken);
-                        methods.Add(method);
-                    }
+                    var method = input.Emit(0, context.CancellationToken);
+                    methods.Add(method);
                 }
 
                 if (methods.Count > 0)
@@ -186,38 +172,25 @@ namespace Pretender.SourceGenerator
                 transform: CreateInvocation.Create)
                 .Where(i => i is not null)!
                 .GroupWith(c => c.Location, CreateInvocationComparer.Instance)
-                .Combine(compilationData)
+                .Combine(knownTypeSymbols)
                 .Select((tuple, token) =>
                 {
-                    if (tuple.Right is not CompilationData compilationData)
-                    {
-                        return (null, null);
-                    }
-
-                    var parser = new CreateParser(tuple.Left.Source, tuple.Left.Elements, tuple.Left.Index, compilationData);
+                    var parser = new CreateParser(tuple.Left.Source, tuple.Left.Elements, tuple.Left.Index, tuple.Right);
                     return parser.Parse(token);
                 })
                 .WithTrackingName("Create");
 
-            context.RegisterSourceOutput(createCalls, static (context, createCalls) =>
-            {
-                if (createCalls.Diagnostics is ImmutableArray<Diagnostic> diagnostics)
-                {
-                    foreach (var diagnostic in diagnostics)
-                    {
-                        context.ReportDiagnostic(diagnostic);
-                    }
-                }
+            var createEmitters = ReportDiagnostics(context, createCalls);
 
+            context.RegisterSourceOutput(createEmitters, static (context, emitter) =>
+            {
                 // TODO: Don't actually need a list here
                 var members = new List<MemberDeclarationSyntax>();
 
                 string? pretendName = null;
-                if (createCalls.Emitter is CreateEmitter emitter)
-                {
-                    pretendName ??= emitter.Operation.TargetMethod.ReturnType.ToPretendName();
-                    members.Add(emitter.Emit(context.CancellationToken));
-                }
+
+                pretendName ??= emitter.Operation.TargetMethod.ReturnType.ToPretendName();
+                members.Add(emitter.Emit(context.CancellationToken));
 
                 if (members.Any())
                 {
@@ -239,23 +212,23 @@ namespace Pretender.SourceGenerator
             #endregion
         }
 
-        internal sealed class CompilationData
+        private static IncrementalValuesProvider<T> ReportDiagnostics<T>(IncrementalGeneratorInitializationContext context, IncrementalValuesProvider<(T? Emitter, ImmutableArray<Diagnostic>? Diagnostics)> source)
         {
-            public bool LanguageVersionIsSupported { get; }
-            public KnownTypeSymbols? TypeSymbols { get; }
+            var diagnostics = source
+                .Select((v, _) => v.Diagnostics)
+                .Where(d => d.HasValue && d.Value.Length > 0);
 
-            public CompilationData(CSharpCompilation compilation)
+            context.RegisterSourceOutput(diagnostics, (context, diagnostics) =>
             {
-                // We don't have a CSharp12 value available yet. Polyfill the value here for forward compat, rather than use the LanguageVersion.Preview enum value.
-                // https://github.com/dotnet/roslyn/blob/168689931cb4e3150641ec2fb188a64ce4b3b790/src/Compilers/CSharp/Portable/LanguageVersion.cs#L218-L232
-                const int LangVersion_CSharp12 = 1200;
-                LanguageVersionIsSupported = (int)compilation.LanguageVersion >= LangVersion_CSharp12;
-
-                if (LanguageVersionIsSupported)
+                foreach (var diagnostic in diagnostics!.Value)
                 {
-                    TypeSymbols = new KnownTypeSymbols(compilation);
+                    context.ReportDiagnostic(diagnostic);
                 }
-            }
+            });
+
+            return source
+                .Select((v, _) => v.Emitter)
+                .Where(e => e != null)!;
         }
     }
 }

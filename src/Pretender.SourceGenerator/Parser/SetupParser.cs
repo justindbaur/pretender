@@ -2,30 +2,22 @@
 using Microsoft.CodeAnalysis;
 using Pretender.SourceGenerator.Emitter;
 using Pretender.SourceGenerator.Invocation;
-using static Pretender.SourceGenerator.PretenderSourceGenerator;
 
 namespace Pretender.SourceGenerator.Parser
 {
     internal class SetupParser
     {
         private readonly SetupInvocation _setupInvocation;
-        private readonly bool _isLanguageVersionSupported;
         private readonly KnownTypeSymbols _knownTypeSymbols;
 
-        public SetupParser(SetupInvocation setupInvocation, CompilationData compilationData)
+        public SetupParser(SetupInvocation setupInvocation, KnownTypeSymbols knownTypeSymbols)
         {
             _setupInvocation = setupInvocation;
-            _isLanguageVersionSupported = compilationData.LanguageVersionIsSupported;
-            _knownTypeSymbols = compilationData.TypeSymbols!;
+            _knownTypeSymbols = knownTypeSymbols;
         }
 
         public (SetupEmitter? Emitter, ImmutableArray<Diagnostic>? Diagnostics) Parse(CancellationToken cancellationToken)
         {
-            if (!_isLanguageVersionSupported)
-            {
-                return (null, ImmutableArray.Create(Diagnostic.Create(DiagnosticDescriptors.UnsupportedLanguageVersion, null)));
-            }
-
             var operation = _setupInvocation.Operation;
 
             // Setup calls are expected to have a single argument, being the setup action argument
