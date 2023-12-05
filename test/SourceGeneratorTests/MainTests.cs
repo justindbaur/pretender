@@ -45,9 +45,9 @@ public partial class MainTests : TestBase
             }
             """);
 
-        Assert.Equal(1, result.GeneratedSources.Length);
+        var source = Assert.Single(result.GeneratedSources);
 
-        var text1 = result.GeneratedSources[0].SourceText.ToString();
+        var text1 = source.SourceText.ToString();
         //var text2 = result.GeneratedSources[1].SourceText.ToString();
     }
 

@@ -38,6 +38,7 @@ namespace Pretender.SourceGenerator.Emitter
 
             foreach (var pretendEmitter in _pretendEmitters)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 namespaceDeclaration = namespaceDeclaration
                     .AddMembers(pretendEmitter.Emit(cancellationToken));
             }
@@ -45,9 +46,12 @@ namespace Pretender.SourceGenerator.Emitter
             var setupInterceptorsClass = ClassDeclaration("SetupInterceptors")
                 .WithModifiers(TokenList(Token(SyntaxKind.FileKeyword), Token(SyntaxKind.StaticKeyword)));
 
+            cancellationToken.ThrowIfCancellationRequested();
+
             int setupIndex = 0;
             foreach (var setupEmitter in _setupEmitters)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 setupInterceptorsClass = setupInterceptorsClass
                     .AddMembers(setupEmitter.Emit(setupIndex, cancellationToken));
                 setupIndex++;
@@ -56,9 +60,13 @@ namespace Pretender.SourceGenerator.Emitter
             var verifyInterceptorsClass = ClassDeclaration("VerifyInterceptors")
                 .AddModifiers(Token(SyntaxKind.FileKeyword), Token(SyntaxKind.StaticKeyword));
 
+            cancellationToken.ThrowIfCancellationRequested();
+
             int verifyIndex = 0;
             foreach (var verifyEmitter in _verifyEmitters)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 verifyInterceptorsClass = verifyInterceptorsClass
                     .AddMembers(verifyEmitter.Emit(verifyIndex, cancellationToken));
                 verifyIndex++;
@@ -67,9 +75,13 @@ namespace Pretender.SourceGenerator.Emitter
             var createInterceptorsClass = ClassDeclaration("CreateInterceptors")
                 .AddModifiers(Token(SyntaxKind.FileKeyword), Token(SyntaxKind.StaticKeyword));
 
+            cancellationToken.ThrowIfCancellationRequested();
+
             int createIndex = 0;
             foreach (var createEmitter in _createEmitters)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 createInterceptorsClass = createInterceptorsClass
                     .AddMembers(createEmitter.Emit(cancellationToken));
                 createIndex++;
@@ -77,6 +89,8 @@ namespace Pretender.SourceGenerator.Emitter
 
             namespaceDeclaration = namespaceDeclaration
                 .AddMembers(setupInterceptorsClass, verifyInterceptorsClass, createInterceptorsClass);
+
+            cancellationToken.ThrowIfCancellationRequested();
 
             return CompilationUnit()
                 .AddMembers(

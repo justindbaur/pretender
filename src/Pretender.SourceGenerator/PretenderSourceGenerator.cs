@@ -1,8 +1,6 @@
 ﻿using System.Collections.Immutable;
 using System.Text;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Pretender.SourceGenerator.Emitter;
 using Pretender.SourceGenerator.Invocation;
 using Pretender.SourceGenerator.Parser;
@@ -14,12 +12,10 @@ namespace Pretender.SourceGenerator
     {
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
-            // TODO: Refactor our region use
             IncrementalValueProvider<KnownTypeSymbols> knownTypeSymbols =
                 context.CompilationProvider
                     .Select((compilation, _) => new KnownTypeSymbols(compilation));
 
-            // TODO: Read settings off of 
             IncrementalValueProvider<PretenderSettings> settings = context.SyntaxProvider.ForAttributeWithMetadataName(
                 "Pretender.PretenderSettingsAttribute",
                 predicate: static (node, _) => true,
@@ -40,7 +36,6 @@ namespace Pretender.SourceGenerator
                     return PretenderSettings.FromAttribute(settings[0]);
                 });
 
-            #region Pretend
             IncrementalValuesProvider<(PretendEmitter? Emitter, ImmutableArray<Diagnostic>? Diagnostics)> pretendEmittersWithDiagnostics =
                  context.SyntaxProvider.CreateSyntaxProvider(
                      predicate: (node, _) => PretendInvocation.IsCandidateSyntaxNode(node),
@@ -57,9 +52,7 @@ namespace Pretender.SourceGenerator
                      .WithTrackingName("Pretend");
 
             var pretendEmitters = ReportDiagnostics(context, pretendEmittersWithDiagnostics);
-            #endregion
 
-            #region Setup
             IncrementalValuesProvider<(SetupEmitter? Emitter, ImmutableArray<Diagnostic>? Diagnostics)> setupEmittersWithDiagnostics =
                 context.SyntaxProvider.CreateSyntaxProvider(
                     predicate: static (node, _) => SetupInvocation.IsCandidateSyntaxNode(node),
@@ -75,9 +68,7 @@ namespace Pretender.SourceGenerator
                 .WithTrackingName("Setup");
 
             var setups = ReportDiagnostics(context, setupEmittersWithDiagnostics);
-            #endregion
 
-            #region Verify
             IncrementalValuesProvider<(VerifyEmitter? Emitter, ImmutableArray<Diagnostic>? Diagnostics)> verifyEmittersWithDiagnostics =
                 context.SyntaxProvider.CreateSyntaxProvider(
                     predicate: (node, _) => VerifyInvocation.IsCandidateSyntaxNode(node),
@@ -94,9 +85,7 @@ namespace Pretender.SourceGenerator
                 .WithTrackingName("Verify");
 
             var verifyEmitters = ReportDiagnostics(context, verifyEmittersWithDiagnostics);
-            #endregion
 
-            #region Create
             var createEmittersWithDiagnostics = context.SyntaxProvider.CreateSyntaxProvider(
                 predicate: (node, _) => CreateInvocation.IsCandidateSyntaxNode(node),
                 transform: CreateInvocation.Create)
@@ -111,7 +100,6 @@ namespace Pretender.SourceGenerator
                 .WithTrackingName("Create");
 
             var createEmitters = ReportDiagnostics(context, createEmittersWithDiagnostics);
-            #endregion
 
             context.RegisterSourceOutput(
                 pretendEmitters.Collect()
@@ -120,9 +108,14 @@ namespace Pretender.SourceGenerator
                 .Combine(createEmitters.Collect()), (context, emitters) =>
             {
                 var (((pretends, setups), verifies), creates) = emitters;
+
+                context.CancellationToken.ThrowIfCancellationRequested();
+
                 var grandEmitter = new GrandEmitter(pretends, setups, verifies, creates);
 
                 var compilationUnit = grandEmitter.Emit(context.CancellationToken);
+
+                context.CancellationToken.ThrowIfCancellationRequested();
 
                 context.AddSource("Pretender.g.cs", compilationUnit.GetText(Encoding.UTF8));
             });
