@@ -1,5 +1,4 @@
 ﻿using System.Collections.Immutable;
-using System.Text;
 using Microsoft.CodeAnalysis;
 using Pretender.SourceGenerator.Emitter;
 using Pretender.SourceGenerator.Invocation;

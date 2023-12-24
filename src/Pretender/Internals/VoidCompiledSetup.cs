@@ -5,6 +5,7 @@ using System.Reflection;
 namespace Pretender.Internals
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
+    [Obsolete("This method is only meant to be used by source generators")]
     public class VoidCompiledSetup<T>(Pretend<T> pretend, MethodInfo methodInfo, Matcher matcher, object? target)
         : BaseCompiledSetup<T>(pretend, methodInfo, matcher, target), IPretendSetup<T>
     {

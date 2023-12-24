@@ -41,7 +41,7 @@ public sealed partial class Pretend<T>
     // TODO: VerifySet?
 
     [EditorBrowsable(EditorBrowsableState.Never)]
-    // TODO: Make this obsolete
+    [Obsolete("This method is only meant to be used by source generators")]
     [StackTraceHidden]
     public void Verify(IPretendSetup<T> pretendSetup, Called called)
     {
@@ -63,7 +63,7 @@ public sealed partial class Pretend<T>
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]
-    // TODO: Make this obsolete
+    [Obsolete("This method is only meant to be used by source generators")]
     public void Handle(CallInfo callInfo)
     {
         _calls ??= [];
@@ -87,7 +87,7 @@ public sealed partial class Pretend<T>
     private List<IPretendSetup<T>>? _setups;
 
     [EditorBrowsable(EditorBrowsableState.Never)]
-    // TODO: Make Obsolete
+    [Obsolete("This method is only meant to be used by source generators")]
     public IPretendSetup<T> GetOrCreateSetup(int hashCode, Func<Pretend<T>, Action<T>, IPretendSetup<T>> setupCreator, Action<T> setupExpression)
     {
         _setups ??= [];
@@ -97,7 +97,7 @@ public sealed partial class Pretend<T>
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]
-    // TODO: Make Obsolete
+    [Obsolete("This method is only meant to be used by source generators")]
     public IPretendSetup<T, TResult> GetOrCreateSetup<TResult>(int hashCode, Func<Pretend<T>, Func<T, TResult>, IPretendSetup<T, TResult>> setupCreator, Func<T, TResult> setupExpression)
     {
         _setups ??= [];

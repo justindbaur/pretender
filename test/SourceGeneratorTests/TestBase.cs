@@ -109,7 +109,16 @@ namespace SourceGeneratorTests
             });
         }
 
-        private void CompareAgainstBaseline(GeneratedSourceResult result, string testMethodName = null!)
+        public async Task RunAndCompareAsync(string source, [CallerMemberName] string? testMethodName = null)
+        {
+            var (result, _) = await RunGeneratorAsync(source);
+            Assert.All(result.GeneratedSources, s =>
+            {
+                CompareAgainstBaseline(s, testMethodName);
+            });
+        }
+
+        private void CompareAgainstBaseline(GeneratedSourceResult result, string? testMethodName = null)
         {
             var normalizedName = result.HintName[..^3].Replace('.', '_') + ".cs";
 #if !GENERATE_SOURCE
