@@ -27,6 +27,7 @@ namespace Pretender.SourceGenerator.Parser
             // and we should provide the constructor to use to the emitter maybe
             var emitter = new CreateEmitter(
                 _createInvocation.Operation,
+                _knownTypeSymbols,
                 _createInvocation.TypeArguments,
                 _locations,
                 _index);

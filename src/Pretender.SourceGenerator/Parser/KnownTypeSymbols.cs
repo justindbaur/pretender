@@ -7,6 +7,8 @@ namespace Pretender.SourceGenerator.Parser
     internal sealed class KnownTypeSymbols
     {
         private readonly ConcurrentDictionary<INamedTypeSymbol, Dictionary<IMethodSymbol, MethodStrategy>> _cachedTypeMethodNames = new(SymbolEqualityComparer.Default);
+        private readonly ConcurrentDictionary<INamedTypeSymbol, string> _cachedPretendNames = new(SymbolEqualityComparer.Default);
+        private readonly ConcurrentDictionary<string, int> _pretendNameTracker = new();
 
         public Compilation Compilation { get; }
 
@@ -24,7 +26,7 @@ namespace Pretender.SourceGenerator.Parser
         // Known abstractions with fakes
         public INamedTypeSymbol? MicrosoftExtensionsLoggingILogger { get; }
         public INamedTypeSymbol? MicrosoftExtensionsLoggingTestingFakeLogger { get; }
-        public INamedTypeSymbol? MicrosoftExtensionsLoggingAbstractionsNullLogger {  get; }
+        public INamedTypeSymbol? MicrosoftExtensionsLoggingAbstractionsNullLogger { get; }
 
         public INamedTypeSymbol? MicrosoftExtensionsLoggingILoggerOfT { get; }
 
@@ -108,6 +110,32 @@ namespace Pretender.SourceGenerator.Parser
                 },
                 ContainingAssembly.Name: "Pretender",
             };
+        }
+
+        public string GetPretendName(INamedTypeSymbol type)
+        {
+            if (_cachedPretendNames.TryGetValue(type, out var name))
+            {
+                return name;
+            }
+
+            var prettyName = type.Name;
+
+            if (_pretendNameTracker.TryGetValue(prettyName, out var nextNum))
+            {
+                // This type has been tracked before
+                var nextName = $"Pretend{type.Name}{nextNum}";
+                _pretendNameTracker[prettyName] = ++nextNum;
+                return nextName;
+            }
+
+            // Never tracked before
+
+            // Start with 1
+            _pretendNameTracker[prettyName] = 1;
+            var firstName = $"Pretend{prettyName}";
+            _cachedPretendNames[type] = firstName;
+            return firstName;
         }
     }
 }

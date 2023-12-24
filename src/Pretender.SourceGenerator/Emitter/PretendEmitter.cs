@@ -6,16 +6,20 @@ namespace Pretender.SourceGenerator.Emitter
 {
     internal class PretendEmitter
     {
-        private readonly ITypeSymbol _pretendType;
+        private readonly INamedTypeSymbol _pretendType;
+        private readonly KnownTypeSymbols _knownTypeSymbols;
         private readonly IReadOnlyDictionary<IMethodSymbol, MethodStrategy> _methodStrategies;
         private readonly bool _fillExisting;
 
-        public PretendEmitter(ITypeSymbol pretendType, IReadOnlyDictionary<IMethodSymbol, MethodStrategy> methodStrategies, bool fillExisting)
+        public PretendEmitter(INamedTypeSymbol pretendType, KnownTypeSymbols knownTypeSymbols, bool fillExisting)
         {
+            _methodStrategies = knownTypeSymbols.GetTypesStrategies(pretendType);
             _pretendType = pretendType;
-            _methodStrategies = methodStrategies;
+            _knownTypeSymbols = knownTypeSymbols;
             _fillExisting = fillExisting;
         }
+
+        public INamedTypeSymbol PretendType => _pretendType;
 
         public void Emit(IndentedTextWriter writer, CancellationToken token)
         {
@@ -28,7 +32,7 @@ namespace Pretender.SourceGenerator.Emitter
             }
             else
             {
-                writer.WriteLine($"file class {_pretendType.ToPretendName()} : {_pretendType.ToFullDisplayString()}");
+                writer.WriteLine($"file class {_knownTypeSymbols.GetPretendName(PretendType)} : {_pretendType.ToFullDisplayString()}");
             }
             using (writer.WriteBlock())
             {
@@ -36,7 +40,7 @@ namespace Pretender.SourceGenerator.Emitter
                 foreach (var strategyEntry in _methodStrategies)
                 {
                     var strategy = strategyEntry.Value;
-                    writer.Write($"public static readonly MethodInfo {strategy.UniqueName}_MethodInfo = typeof({_pretendType.ToPretendName()})");
+                    writer.Write($"public static readonly MethodInfo {strategy.UniqueName}_MethodInfo = typeof({_knownTypeSymbols.GetPretendName(PretendType)})");
                     strategyEntry.Value.EmitMethodGetter(writer, token);
                     writer.WriteLine(skipIfPresent: true);
                 }
@@ -47,7 +51,7 @@ namespace Pretender.SourceGenerator.Emitter
                 writer.WriteLine();
 
                 // main constructor
-                writer.WriteLine($"public {_pretendType.ToPretendName()}(Pretend<{_pretendType.ToFullDisplayString()}> pretend)");
+                writer.WriteLine($"public {_knownTypeSymbols.GetPretendName(PretendType)}(Pretend<{_pretendType.ToFullDisplayString()}> pretend)");
                 using (writer.WriteBlock())
                 {
                     writer.WriteLine("_pretend = pretend;");

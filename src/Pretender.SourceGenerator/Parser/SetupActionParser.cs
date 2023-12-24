@@ -10,12 +10,12 @@ namespace Pretender.SourceGenerator.Parser
     internal class SetupActionParser
     {
         private readonly IOperation _setupActionArgument;
-        private readonly ITypeSymbol _pretendType;
+        private readonly INamedTypeSymbol _pretendType;
         private readonly bool _forcePropertySetter;
         private readonly KnownTypeSymbols _knownTypeSymbols;
 
         // TODO: Should I have a higher IOperation kind here? Like InvocationOperation?
-        public SetupActionParser(IOperation setupActionArgument, ITypeSymbol pretendType, bool forcePropertySetter, KnownTypeSymbols knownTypeSymbols)
+        public SetupActionParser(IOperation setupActionArgument, INamedTypeSymbol pretendType, bool forcePropertySetter, KnownTypeSymbols knownTypeSymbols)
         {
             _setupActionArgument = setupActionArgument;
             _pretendType = pretendType;

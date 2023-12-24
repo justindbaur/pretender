@@ -1,26 +1,29 @@
-﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Operations;
-using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+﻿using Microsoft.CodeAnalysis.Operations;
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Pretender.SourceGenerator.Writing;
+using Pretender.SourceGenerator.Parser;
 
 namespace Pretender.SourceGenerator.Emitter
 {
     internal class CreateEmitter
     {
         private readonly IInvocationOperation _originalOperation;
+        private readonly KnownTypeSymbols _knownTypeSymbols;
         private readonly ImmutableArray<ITypeSymbol>? _typeArguments;
         private readonly ImmutableArray<InterceptsLocationInfo> _locations;
         private readonly int _index;
 
-        public CreateEmitter(IInvocationOperation originalOperation, ImmutableArray<ITypeSymbol>? typeArguments, ImmutableArray<InterceptsLocationInfo> locations, int index)
+        public CreateEmitter(IInvocationOperation originalOperation, KnownTypeSymbols knownTypeSymbols, ImmutableArray<ITypeSymbol>? typeArguments, ImmutableArray<InterceptsLocationInfo> locations, int index)
         {
             _originalOperation = originalOperation;
+            _knownTypeSymbols = knownTypeSymbols;
             _typeArguments = typeArguments;
             _locations = locations;
             _index = index;
         }
+
+        public INamedTypeSymbol PretendType => (INamedTypeSymbol)_originalOperation.TargetMethod.ReturnType;
 
         public IInvocationOperation Operation => _originalOperation;
 
@@ -63,7 +66,7 @@ namespace Pretender.SourceGenerator.Emitter
 
             using (writer.WriteBlock())
             {
-                writer.Write($"return new {returnType.ToPretendName()}(pretend");
+                writer.Write($"return new {_knownTypeSymbols.GetPretendName(PretendType)}(pretend");
 
                 if (_typeArguments.HasValue)
                 {
@@ -79,24 +82,6 @@ namespace Pretender.SourceGenerator.Emitter
                     // TODO: Handle params overload
                     writer.WriteLine(");");
                 }
-            }
-        }
-
-        private ImmutableArray<AttributeListSyntax> CreateInterceptsAttributes()
-        {
-            var builder = ImmutableArray.CreateBuilder<AttributeListSyntax>(_locations.Length);
-
-            foreach (var location in _locations)
-            {
-                var attribute = Create(location.ToAttributeSyntax());
-                builder.Add(attribute);
-            }
-
-            return builder.MoveToImmutable();
-
-            static AttributeListSyntax Create(AttributeSyntax attribute)
-            {
-                return AttributeList(SingletonSeparatedList(attribute));
             }
         }
     }

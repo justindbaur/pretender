@@ -122,7 +122,7 @@ namespace SourceGeneratorTests
             using var reader = new StreamReader(stream);
             Assert.Equal(reader.ReadToEnd().ReplaceLineEndings(), result.SourceText.ToString().ReplaceLineEndings());
 #else
-            var baseDirectory = new DirectoryInfo(typeof(TestBase).Assembly.GetAssemblyLocation())
+            var baseDirectory = new DirectoryInfo(typeof(TestBase).Assembly.Location)
                 .Parent?.Parent?.Parent?.Parent;
 
             if (baseDirectory == null || !baseDirectory.Exists)

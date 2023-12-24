@@ -28,7 +28,8 @@ namespace Pretender.SourceGenerator.Parser
             cancellationToken.ThrowIfCancellationRequested();
 
             // Verify calls are expected to be called from Pretend<T> so the type argument gives us the type we are pretending
-            var pretendType = operation.TargetMethod.ContainingType.TypeArguments[0];
+            // This should be a safe cast
+            var pretendType = (INamedTypeSymbol)operation.TargetMethod.ContainingType.TypeArguments[0];
 
             // TODO: This doesn't exist yet
             var useSetMethod = operation.TargetMethod.Name == "VerifySet";

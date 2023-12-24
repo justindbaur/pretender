@@ -61,7 +61,7 @@ namespace Pretender.SourceGenerator.Parser
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            return (new PretendEmitter(PretendInvocation.PretendType, methodStrategies, PretendInvocation.FillExisting), null);
+            return (new PretendEmitter(PretendInvocation.PretendType, _knownTypeSymbols, PretendInvocation.FillExisting), null);
         }
     }
 }

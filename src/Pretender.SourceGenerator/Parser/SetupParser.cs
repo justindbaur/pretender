@@ -27,7 +27,8 @@ namespace Pretender.SourceGenerator.Parser
 
             // Setup calls are expected to be called from Pretend<T> so the type argument gives us the type we are pretending
             // TODO: Assert the containing type maybe?
-            var pretendType = operation.TargetMethod.ContainingType.TypeArguments[0];
+            // This should be a safe cast
+            var pretendType = (INamedTypeSymbol)operation.TargetMethod.ContainingType.TypeArguments[0];
 
             var useSetMethod = operation.TargetMethod.Name == "SetupSet";
 

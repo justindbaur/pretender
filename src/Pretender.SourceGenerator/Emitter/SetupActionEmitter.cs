@@ -10,7 +10,7 @@ namespace Pretender.SourceGenerator.Emitter
         private readonly ImmutableArray<SetupArgumentEmitter> _setupArgumentEmitters;
         private readonly KnownTypeSymbols _knownTypeSymbols;
 
-        public SetupActionEmitter(ITypeSymbol pretendType, IMethodSymbol setupMethod, ImmutableArray<SetupArgumentEmitter> setupArgumentEmitters, KnownTypeSymbols knownTypeSymbols)
+        public SetupActionEmitter(INamedTypeSymbol pretendType, IMethodSymbol setupMethod, ImmutableArray<SetupArgumentEmitter> setupArgumentEmitters, KnownTypeSymbols knownTypeSymbols)
         {
             PretendType = pretendType;
             SetupMethod = setupMethod;
@@ -18,7 +18,7 @@ namespace Pretender.SourceGenerator.Emitter
             _knownTypeSymbols = knownTypeSymbols;
         }
 
-        public ITypeSymbol PretendType { get; }
+        public INamedTypeSymbol PretendType { get; }
         public IMethodSymbol SetupMethod { get; }
 
         public void Emit(IndentedTextWriter writer, CancellationToken cancellationToken)
@@ -68,7 +68,7 @@ namespace Pretender.SourceGenerator.Emitter
                 var methodStrategy = _knownTypeSymbols.GetSingleMethodStrategy(SetupMethod);
 
                 // TODO: default value
-                writer.WriteLine($"return new ReturningCompiledSetup<{PretendType.ToFullDisplayString()}, {returnType.ToUnknownTypeString()}>(pretend, {PretendType.ToPretendName()}.{methodStrategy.UniqueName}_MethodInfo, {matcherName}, expr.Target, defaultValue: default);");
+                writer.WriteLine($"return new ReturningCompiledSetup<{PretendType.ToFullDisplayString()}, {returnType.ToUnknownTypeString()}>(pretend, {_knownTypeSymbols.GetPretendName(PretendType)}.{methodStrategy.UniqueName}_MethodInfo, {matcherName}, expr.Target, defaultValue: default);");
             }
             else
             {

@@ -41,4 +41,8 @@
     <Compile Remove="Baselines\**\*.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Baselines\MainTests\ReturningMethod\" />
+  </ItemGroup>
+
 </Project>
