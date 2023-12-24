@@ -39,15 +39,19 @@ public class UnitTest1
     [Fact]
     public void Test3()
     {
-        var pretend = Pretend.That<IInterface>()
+        var pretend = Pretend.That<IInterface>();
+
+        var setup = pretend
             .Setup(i => i.Greeting("Hello", It.IsAny<int>()));
 
-        var item = pretend.Pretend.Create();
+        setup.Returns("2");
+
+        var item = pretend.Create();
 
         var response = item.Greeting("Hello", 12);
-        Assert.Null(response);
+        Assert.Equal("2", response);
 
-        pretend.Verify(1);
+        setup.Verify(1);
     }
 }
 

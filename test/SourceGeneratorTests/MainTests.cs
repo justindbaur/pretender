@@ -53,22 +53,36 @@ public partial class MainTests : TestBase
 
 
     [Fact]
-    public async Task Test2()
+    public async Task AbstractClass()
     {
-        var (result, compilation) = await RunPartialGeneratorAsync($$"""
-            var pretendSimpleInterface = Pretend.That<SimpleAbstractClass>();
+        var (result, c) = await RunPartialGeneratorAsync($$"""
+            #nullable enable
+            using System;
+            using System.Threading.Tasks;
+            using Pretender;
 
-            var simpleInterface = pretendSimpleInterface.Create();
+            namespace AbstractClass;
+
+            public abstract class MyAbstractClass
+            {
+                abstract Task<string> MethodAsync(string str);
+                abstract string Name { get; set; }
+            }
+
+            public class TestClass
+            {
+                public TestClass()
+                {
+                    var pretend = Pretend.That<MyAbstractClass>();
+
+                    pretend.Setup(c => c.MethodAsync("Hi"));
+                }
+            }
             """);
 
-        Assert.Equal(3, result.GeneratedSources.Length);
+        var source = Assert.Single(result.GeneratedSources);
 
-        var source1 = result.GeneratedSources[0];
-        var text1 = source1.SourceText.ToString();
-        var source2 = result.GeneratedSources[1];
-        var text2 = source2.SourceText.ToString();
-        var source3 = result.GeneratedSources[2];
-        var text3 = source3.SourceText.ToString();
+        var sourceText = source.SourceText.ToString();
     }
 
     [Fact]
@@ -82,15 +96,11 @@ public partial class MainTests : TestBase
                 .Returns("Hi");
             
             var pretend = pretendSimpleInterface.Create();
+
+            pretendSimpleInterface.Verify(i => i.Foo("1", 1), 2);
             """);
 
-        Assert.Equal(3, result.GeneratedSources.Length);
-
-        var source1 = result.GeneratedSources[0];
-        var text1 = source1.SourceText.ToString();
-        var source2 = result.GeneratedSources[1];
-        var text2 = source2.SourceText.ToString();
-        var source3 = result.GeneratedSources[2];
-        var text3 = source3.SourceText.ToString();
+        var source = Assert.Single(result.GeneratedSources);
+        var text = source.SourceText.ToString();
     }
 }

@@ -1,8 +1,10 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.Immutable;
+using System.Diagnostics;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Pretender.SourceGenerator.Parser;
+using Pretender.SourceGenerator.Writing;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Pretender.SourceGenerator
@@ -48,6 +50,13 @@ namespace Pretender.SourceGenerator
             }
 
             return typeSyntax;
+        }
+
+        public static string ToUnknownTypeString(this ITypeSymbol type)
+        {
+            return type.NullableAnnotation == NullableAnnotation.Annotated
+                ? $"{type.ToFullDisplayString()}?"
+                : type.ToFullDisplayString();
         }
 
         public static ExpressionSyntax ToDefaultValueSyntax(this INamedTypeSymbol type, KnownTypeSymbols knownTypeSymbols)
@@ -131,16 +140,19 @@ namespace Pretender.SourceGenerator
             return type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         }
 
-        public static ClassDeclarationSyntax ScaffoldImplementation(this ITypeSymbol type, ScaffoldTypeOptions options)
+        public static void ScaffoldImplementation(this ITypeSymbol type, IndentedTextWriter writer, ScaffoldTypeOptions options)
         {
             Debug.Assert(!type.IsSealed, "I can't scaffold an implementation of a sealed class");
 
             // Add the base type PretendIMyType : IMyType
-            var classDeclaration = ClassDeclaration(type.ToPretendName())
-                .AddBaseListTypes(SimpleBaseType(ParseTypeName(type.ToFullDisplayString())));
+            writer.WriteLine($"file class {type.ToPretendName()} : {type.ToFullDisplayString()}");
+            using (writer.WriteBlock())
+            {
+
+            }
 
             // Add fields first
-            classDeclaration = classDeclaration.AddMembers([.. options.CustomFields]);
+            //classDeclaration = classDeclaration.AddMembers([.. options.CustomFields]);
 
             // TODO: Only public and non-sealed?
             var typeMembers = type.GetMembers();
@@ -252,7 +264,18 @@ namespace Pretender.SourceGenerator
             // TODO: Add GeneratedCodeAttribute
             // TODO: Add ExcludeFromCodeCoverageAttribute
 
-            return classDeclaration.AddMembers([.. members]);
+            //return classDeclaration.AddMembers([.. members]);
+        }
+
+        public static ImmutableArray<IMethodSymbol> GetApplicableMethods(this INamedTypeSymbol type)
+        {
+            return type.GetMembers()
+                .Where(m => !m.IsStatic)
+                .OfType<IMethodSymbol>()
+                .Where(m => m.MethodKind == MethodKind.Ordinary
+                    || m.MethodKind == MethodKind.PropertyGet
+                    || m.MethodKind == MethodKind.PropertySet)
+                .ToImmutableArray();
         }
 
         public static MethodDeclarationSyntax ToMethodSyntax(this IMethodSymbol method)

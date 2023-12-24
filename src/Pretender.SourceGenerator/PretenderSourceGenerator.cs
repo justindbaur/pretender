@@ -102,7 +102,7 @@ namespace Pretender.SourceGenerator
             var createEmitters = ReportDiagnostics(context, createEmittersWithDiagnostics);
 
             context.RegisterSourceOutput(
-                pretendEmitters.Collect()
+                pretendEmitters.GroupWith(e => e, PretendEmitter.Comparer.Default).Select((t, _) => t.Source).Collect()
                 .Combine(setups.Collect())
                 .Combine(verifyEmitters.Collect())
                 .Combine(createEmitters.Collect()), (context, emitters) =>
@@ -113,11 +113,11 @@ namespace Pretender.SourceGenerator
 
                 var grandEmitter = new GrandEmitter(pretends, setups, verifies, creates);
 
-                var compilationUnit = grandEmitter.Emit(context.CancellationToken);
+                var sourceText = grandEmitter.Emit(context.CancellationToken);
 
                 context.CancellationToken.ThrowIfCancellationRequested();
 
-                context.AddSource("Pretender.g.cs", compilationUnit.GetText(Encoding.UTF8));
+                context.AddSource("Pretender.g.cs", sourceText);
             });
         }
 

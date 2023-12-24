@@ -8,14 +8,14 @@ namespace Pretender.SourceGenerator.Invocation
 {
     internal class PretendInvocation
     {
-        public PretendInvocation(ITypeSymbol pretendType, Location location, bool fillExisting)
+        public PretendInvocation(INamedTypeSymbol pretendType, Location location, bool fillExisting)
         {
             PretendType = pretendType;
             Location = location;
             FillExisting = fillExisting;
         }
 
-        public ITypeSymbol PretendType { get; }
+        public INamedTypeSymbol PretendType { get; }
         public Location Location { get; }
         public bool FillExisting { get; }
 
@@ -70,12 +70,12 @@ namespace Pretender.SourceGenerator.Invocation
             }
 
             return CreateFromTypeSymbol(
-                operation.TargetMethod.TypeArguments[0], 
+                (INamedTypeSymbol)operation.TargetMethod.TypeArguments[0], // This should be a totally safe cast
                 operation.Syntax.GetLocation(),
                 fillExisting: false);
         }
 
-        private static PretendInvocation? CreateFromTypeSymbol(ITypeSymbol typeSymbol, Location location, bool fillExisting)
+        private static PretendInvocation? CreateFromTypeSymbol(INamedTypeSymbol typeSymbol, Location location, bool fillExisting)
         {
             // TODO: Maybe check that ITypeSymbol is INamedTypeSymbol?
             return new PretendInvocation(typeSymbol, location, fillExisting);

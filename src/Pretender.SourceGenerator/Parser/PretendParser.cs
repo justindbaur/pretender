@@ -9,7 +9,7 @@ namespace Pretender.SourceGenerator.Parser
 {
     internal class PretendParser
     {
-        private static readonly List<IKnownFake> _knownFakes =
+        private static readonly List<IKnownFake> s_knownFakes =
         [
             new ILoggerFake(),
         ];
@@ -43,21 +43,25 @@ namespace Pretender.SourceGenerator.Parser
 
             if (_settings.Behavior == PretendBehavior.PreferFakes)
             {
-                foreach (var fake in _knownFakes)
+                foreach (var fake in s_knownFakes)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (fake.TryConstruct((INamedTypeSymbol)pretendType, _knownTypeSymbols, cancellationToken, out var fakeType))
+                    if (fake.TryConstruct(pretendType, _knownTypeSymbols, cancellationToken, out var fakeType))
                     {
                         // TODO: Do something
                     }
                 }
             }
 
+            var methodStrategies = _knownTypeSymbols.GetTypesStrategies(pretendType);
+
+            cancellationToken.ThrowIfCancellationRequested();
+
             // TODO: Do a larger amount of parsing
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            return (new PretendEmitter(PretendInvocation.PretendType, PretendInvocation.FillExisting), null);
+            return (new PretendEmitter(PretendInvocation.PretendType, methodStrategies, PretendInvocation.FillExisting), null);
         }
     }
 }

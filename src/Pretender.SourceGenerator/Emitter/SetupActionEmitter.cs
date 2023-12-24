@@ -1,221 +1,82 @@
 ﻿using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Pretender.SourceGenerator.Parser;
-using Pretender.SourceGenerator.SetupArguments;
-using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+using Pretender.SourceGenerator.Writing;
 
 namespace Pretender.SourceGenerator.Emitter
 {
     internal class SetupActionEmitter
     {
-        private readonly ImmutableArray<SetupArgumentSpec> _setupArgumentSpecs;
+        private readonly ImmutableArray<SetupArgumentEmitter> _setupArgumentEmitters;
         private readonly KnownTypeSymbols _knownTypeSymbols;
 
-        public SetupActionEmitter(ITypeSymbol pretendType, IMethodSymbol setupMethod, ImmutableArray<SetupArgumentSpec> setupArgumentSpecs, KnownTypeSymbols knownTypeSymbols)
+        public SetupActionEmitter(ITypeSymbol pretendType, IMethodSymbol setupMethod, ImmutableArray<SetupArgumentEmitter> setupArgumentEmitters, KnownTypeSymbols knownTypeSymbols)
         {
             PretendType = pretendType;
             SetupMethod = setupMethod;
-            _setupArgumentSpecs = setupArgumentSpecs;
+            _setupArgumentEmitters = setupArgumentEmitters;
             _knownTypeSymbols = knownTypeSymbols;
         }
 
         public ITypeSymbol PretendType { get; }
         public IMethodSymbol SetupMethod { get; }
 
-        public InvocationExpressionSyntax CreateSetupGetter(CancellationToken cancellationToken)
+        public void Emit(IndentedTextWriter writer, CancellationToken cancellationToken)
         {
-            var totalMatchStatements = _setupArgumentSpecs.Sum(sa => sa.NeededMatcherStatements);
             cancellationToken.ThrowIfCancellationRequested();
 
-            var matchStatements = new StatementSyntax[totalMatchStatements];
-            int addedStatements = 0;
+            writer.Write("pretend.GetOrCreateSetup");
 
-            for (var i = 0; i < _setupArgumentSpecs.Length; i++)
+            var returnType = SetupMethod.ReturnType.SpecialType != SpecialType.System_Void
+                ? SetupMethod.ReturnType : null;
+
+            if (returnType is not null)
             {
-                var argument = _setupArgumentSpecs[i];
-
-                var newStatements = argument.CreateMatcherStatements(cancellationToken);
-                cancellationToken.ThrowIfCancellationRequested();
-
-                newStatements.CopyTo(matchStatements, addedStatements);
-                addedStatements += newStatements.Length;
+                writer.Write($"<{returnType.ToUnknownTypeString()}>");
             }
 
-            ArgumentSyntax matcherArgument;
-            ImmutableArray<StatementSyntax> statements;
-            if (matchStatements.Length == 0)
+            writer.WriteLine("(0, static (pretend, expr) =>");
+            writer.WriteLine("{");
+            writer.IncreaseIndent();
+
+            var anyEmitMatcherStatements = _setupArgumentEmitters.Any(e => e.EmitsMatcher);
+
+            string matcherName;
+            if (anyEmitMatcherStatements)
             {
-                statements = ImmutableArray<StatementSyntax>.Empty;
+                matcherName = "matchCall";
+                writer.WriteLine("Matcher matchCall = (callInfo, target) =>");
+                writer.WriteLine("{");
+                writer.IncreaseIndent();
 
-                // Nothing actually needs to match this will always return true, so we use a cached matcher that always returns true
-                matcherArgument = Argument(MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    ParseTypeName("Cache"),
-                    IdentifierName("NoOpMatcher")))
-                        .WithNameColon(NameColon("matcher"));
-            }
-            else
-            {
-                // Other match statements should have added all the ways the method could return false
-                // so if it gets through all those statements it should return true at the end.
-                var trueReturnStatement = ReturnStatement(LiteralExpression(SyntaxKind.TrueLiteralExpression));
-
-                /*
-                 * Matcher matchCall = static (callInfo, target) =>
-                 * {
-                 *     ...matching calls...
-                 *     return true;
-                 * }
-                 */
-                var matchCallIdentifier = Identifier("matchCall");
-
-                var matcherDelegate = ParenthesizedLambdaExpression(
-                ParameterList(SeparatedList([
-                        Parameter(Identifier("callInfo")),
-                        Parameter(Identifier("target"))
-                    ])),
-                Block(List([.. matchStatements, trueReturnStatement])))
-                    .WithModifiers(TokenList(Token(SyntaxKind.StaticKeyword)));
-
-                statements = ImmutableArray.Create<StatementSyntax>(LocalDeclarationStatement(VariableDeclaration(
-                ParseTypeName("Matcher"))
-                    .WithVariables(SingletonSeparatedList(
-                    VariableDeclarator(matchCallIdentifier)
-                            .WithInitializer(EqualsValueClause(matcherDelegate))))));
-
-                matcherArgument = Argument(IdentifierName(matchCallIdentifier));
-            }
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var objectCreationArguments = ArgumentList(
-                SeparatedList(new[]
+                foreach (var argumentEmitter in _setupArgumentEmitters)
                 {
-                    Argument(IdentifierName("pretend")),
-                    //Argument(IdentifierName("setupExpression")),
-                    Argument(MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        IdentifierName(PretendType.ToPretendName()),
-                        IdentifierName(SetupMethod.ToMethodInfoCacheName())
-                        )),
-                    matcherArgument,
-                    Argument(MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        IdentifierName("expr"),
-                        IdentifierName("Target")
-                        )),
-                }));
+                    argumentEmitter.EmitArgumentMatcher(writer, cancellationToken);
+                }
 
-            cancellationToken.ThrowIfCancellationRequested();
-
-            GenericNameSyntax returnObjectName;
-            SimpleNameSyntax getOrCreateName;
-            if (SetupMethod.ReturnsVoid)
-            {
-                // VoidCompiledSetup<T>
-                returnObjectName = GenericName("VoidCompiledSetup")
-                    .AddTypeArgumentListArguments(ParseTypeName(PretendType.ToFullDisplayString()));
-
-                getOrCreateName = IdentifierName("GetOrCreateSetup");
+                writer.WriteLine("return true;");
+                writer.DecreaseIndent();
+                writer.WriteLine("};");
             }
             else
             {
-
-                // ReturningCompiledSetup<T1, T2>
-                returnObjectName = GenericName("ReturningCompiledSetup")
-                    .AddTypeArgumentListArguments(
-                        ParseTypeName(PretendType.ToFullDisplayString()),
-                        SetupMethod.ReturnType.AsUnknownTypeSyntax());
-
-                getOrCreateName = GenericName("GetOrCreateSetup")
-                    .AddTypeArgumentListArguments(SetupMethod.ReturnType.AsUnknownTypeSyntax());
-
-                // TODO: Recursively mock?
-                ExpressionSyntax defaultValue;
-
-                // TODO: Is this safe?
-                var namedType = (INamedTypeSymbol)SetupMethod.ReturnType;
-
-                defaultValue = namedType.ToDefaultValueSyntax(_knownTypeSymbols);
-
-                //if (SetupMethod.ReturnType.EqualsByName(["System", "Threading", "Tasks", "Task"]))
-                //{
-                //    if (SetupMethod.ReturnType is INamedTypeSymbol namedType && namedType.TypeArguments.Length == 1)
-                //    {
-                //        // Task.FromResult<T>(default)
-                //        defaultValue = KnownBlocks.TaskFromResult(
-                //            namedType.TypeArguments[0].AsUnknownTypeSyntax(),
-                //            LiteralExpression(SyntaxKind.DefaultLiteralExpression));
-                //    }
-                //    else
-                //    {
-                //        // Task.CompletedTask
-                //        defaultValue = KnownBlocks.TaskCompletedTask;
-                //    }
-                //}
-                //else if (SetupMethod.ReturnType.EqualsByName(["System", "Threading", "Tasks", "ValueTask"]))
-                //{
-                //    if (SetupMethod.ReturnType is INamedTypeSymbol namedType && namedType.TypeArguments.Length == 1)
-                //    {
-                //        // ValueTask.FromResult<T>(default)
-                //        defaultValue = KnownBlocks.ValueTaskFromResult(
-                //            namedType.TypeArguments[0].AsUnknownTypeSyntax(),
-                //            LiteralExpression(SyntaxKind.DefaultLiteralExpression)
-                //        );
-                //    }
-                //    else
-                //    {
-                //        // ValueTask.CompletedTask
-                //        defaultValue = KnownBlocks.ValueTaskCompletedTask;
-                //    }
-                //}
-                //else
-                //{
-                //    // TODO: Support custom awaitable
-                //    // default
-                //    defaultValue = LiteralExpression(SyntaxKind.DefaultLiteralExpression);
-                //}
-
-                cancellationToken.ThrowIfCancellationRequested();
-
-                objectCreationArguments = objectCreationArguments.AddArguments(Argument(
-                    defaultValue).WithNameColon(NameColon("defaultValue")));
+                matcherName = "Cache.NoOpMatcher";
             }
 
-            cancellationToken.ThrowIfCancellationRequested();
+            if (returnType is not null)
+            {
+                var methodStrategy = _knownTypeSymbols.GetSingleMethodStrategy(SetupMethod);
 
-            var compiledSetupCreation = ObjectCreationExpression(returnObjectName)
-                .WithArgumentList(objectCreationArguments);
+                // TODO: default value
+                writer.WriteLine($"return new ReturningCompiledSetup<{PretendType.ToFullDisplayString()}, {returnType.ToUnknownTypeString()}>(pretend, {PretendType.ToPretendName()}.{methodStrategy.UniqueName}_MethodInfo, {matcherName}, expr.Target, defaultValue: default);");
+            }
+            else
+            {
+                writer.WriteLine($"return new VoidCompiledSetup<{PretendType.ToFullDisplayString()}>();");
+            }
 
-            // (pretend, expression) =>
-            // {
-            //     return new CompiledSetup();
-            // }
-            var creator = ParenthesizedLambdaExpression()
-                .WithModifiers(TokenList(Token(SyntaxKind.StaticKeyword)))
-                .AddParameterListParameters(Parameter(Identifier("pretend")), Parameter(Identifier("expr")))
-                .AddBlockStatements([.. statements, ReturnStatement(compiledSetupCreation)]);
-
-            // TODO: The hash code doesn't actually work, right now, this will create a new pretend every call.
-            // We likely need to create our own class that can calculate the hash code and place that number in here.
-
-            cancellationToken.ThrowIfCancellationRequested();
-            // TODO: Should I have a different seed?
-            //var badHashCode = _argumentSpecs.Aggregate(0, (agg, s) => HashCode.Combine(agg, s.GetHashCode()));
-            var badHashCode = 0;
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            // pretend.GetOrCreateSetup()
-            return InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                IdentifierName("pretend"),
-                getOrCreateName))
-                .AddArgumentListArguments(
-                    Argument(LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(badHashCode))),
-                    Argument(creator),
-                    Argument(IdentifierName("setupExpression")));
+            writer.DecreaseIndent();
+            writer.WriteLine("}, setupExpression);");
         }
     }
 }

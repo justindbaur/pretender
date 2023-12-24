@@ -1,76 +1,126 @@
 ﻿using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Reflection;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
-using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+using Pretender.SourceGenerator.Emitter;
+using Pretender.SourceGenerator.Parser;
 
 namespace Pretender.SourceGenerator.SetupArguments
 {
-    internal abstract class SetupArgumentSpec
+    internal class SetupArgumentSpec
     {
-        private readonly List<Diagnostic> _diagnostics = [];
-        public SetupArgumentSpec(IArgumentOperation originalArgument, int argumentPlacement)
+        public SetupArgumentSpec(IArgumentOperation argument, KnownTypeSymbols knownTypeSymbols)
         {
-            OriginalArgument = originalArgument;
-            ArgumentPlacement = argumentPlacement;
-
-            var tracker = new ArgumentTracker();
-            Visit(originalArgument, tracker);
-
-            NeedsCapturer = tracker.NeedsCapturer;
-            NeededLocals = tracker.NeededLocals;
+            Argument = argument;
+            KnownTypeSymbols = knownTypeSymbols;
         }
 
-        protected IArgumentOperation OriginalArgument { get; }
-        protected IParameterSymbol Parameter => OriginalArgument.Parameter!;
-        protected int ArgumentPlacement { get; }
-        protected void AddDiagnostic(Diagnostic diagnostic)
+        public IArgumentOperation Argument { get; }
+
+        // I don't think a SetupArgument will ever be __argList so I'm not worried about this null assurance
+        public IParameterSymbol Parameter => Argument.Parameter!;
+
+        public KnownTypeSymbols KnownTypeSymbols { get; }
+    }
+
+    internal class SetupArgumentParser
+    {
+        private readonly SetupArgumentSpec _setupArgumentSpec;
+
+        public SetupArgumentParser(SetupArgumentSpec setupArgumentSpec)
         {
-            _diagnostics.Add(diagnostic);
+            _setupArgumentSpec = setupArgumentSpec;
         }
 
-        public IReadOnlyList<Diagnostic> Diagnostics => _diagnostics;
-        public bool NeedsCapturer { get; }
-        public ImmutableArray<ILocalReferenceOperation> NeededLocals { get; }
-        public abstract int NeededMatcherStatements { get; }
 
-        public abstract ImmutableArray<StatementSyntax> CreateMatcherStatements(CancellationToken cancellationToken);
-
-        protected (SyntaxToken Identifier, LocalDeclarationStatementSyntax Accessor) CreateArgumentAccessor()
+        public (SetupArgumentEmitter? SetupArgumentEmitter, ImmutableArray<Diagnostic>? Diagnostics) Parse(CancellationToken cancellationToken)
         {
-            var argumentLocal = Identifier($"{Parameter.Name}_arg");
+            var argumentValue = _setupArgumentSpec.Argument.Value;
 
-            // (string?)callInfo.Arguments[index];
-            ExpressionSyntax argumentGetter = CastExpression(
-                    Parameter.Type.AsUnknownTypeSyntax(),
-                    ElementAccessExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, IdentifierName("callInfo"), IdentifierName("Arguments")))
-                        .AddArgumentListArguments(Argument(LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(ArgumentPlacement))))
-                    );
-
-            var localAccessor = LocalDeclarationStatement(VariableDeclaration(ParseTypeName("var"))
-                .AddVariables(VariableDeclarator(argumentLocal)
-                    .WithInitializer(EqualsValueClause(argumentGetter))));
-
-            return (argumentLocal, localAccessor);
+            return argumentValue.Kind switch
+            {
+                OperationKind.Literal => (new LiteralArgumentEmitter((ILiteralOperation)argumentValue, _setupArgumentSpec), null),
+                OperationKind.Invocation => ParseInvocation((IInvocationOperation)argumentValue, cancellationToken),
+                OperationKind.LocalReference => (new LocalReferenceArgumentEmitter((ILocalReferenceOperation)argumentValue, _setupArgumentSpec), null),
+                _ => throw new NotImplementedException($"{argumentValue.Kind} is not a supported operation in setup arguments."),
+            };
         }
 
-        protected IfStatementSyntax CreateIfCheck(ExpressionSyntax left, ExpressionSyntax right)
+        private (SetupArgumentEmitter? Emitter, ImmutableArray<Diagnostic>? Diagnostics) ParseInvocation(IInvocationOperation invocation, CancellationToken cancellationToken)
         {
-            var binaryExpression = BinaryExpression(
-                SyntaxKind.NotEqualsExpression,
-                left,
-                right);
+            if (TryGetMatcherAttributeType(invocation, out var matcherType, cancellationToken))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
 
-            return CreateIfCheck(binaryExpression);
+                // Special case AnyMatcher
+                if (SymbolEqualityComparer.Default.Equals(matcherType, _setupArgumentSpec.KnownTypeSymbols.AnyMatcher))
+                {
+                    return (new NoopArgumentEmitter(_setupArgumentSpec), null);
+                }
+
+                // TODO: Parse args passed into the invocation
+                return (new MatcherArgumentEmitter(matcherType, _setupArgumentSpec), null);
+            }
+            else
+            {
+                // They likely invoked their own method, we will need to run and capture output for value/matcher
+                throw new NotImplementedException("We don't support user scoped invocations quite yet.");
+            }
         }
 
-        protected IfStatementSyntax CreateIfCheck(ExpressionSyntax condition)
+        private bool TryGetMatcherAttributeType(IInvocationOperation invocation, out INamedTypeSymbol matcherType, CancellationToken cancellationToken)
         {
-            return IfStatement(condition, Block(
-                ReturnStatement(LiteralExpression(SyntaxKind.FalseLiteralExpression))));
+            var allAttributes = invocation.TargetMethod.GetAttributes();
+
+            // TODO: Use KnownTypeSymbols
+            var matcherAttribute = allAttributes.Single(ad => ad.AttributeClass!.EqualsByName(["Pretender", "Matchers", "MatcherAttribute"]));
+
+            matcherType = null!;
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (matcherAttribute.AttributeClass!.IsGenericType)
+            {
+                // We are in the typed version, get the generic arg
+                matcherType = (INamedTypeSymbol)matcherAttribute.AttributeClass.TypeArguments[0];
+            }
+            else
+            {
+                // We are in the base version, get the constructor arg
+                // TODO: Make this work
+                // matcherType = matcherAttribute.ConstructorArguments[0];
+                var attributeType = matcherAttribute.ConstructorArguments[0];
+                // TODO: When can Type be null?
+                // TODO: Use KnownTypeSymbols
+                if (!attributeType.Type!.EqualsByName(["System", "Type"]))
+                {
+                    return false;
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (attributeType.Value is null)
+                {
+                    return false;
+                }
+
+                // Always an okay cast?
+                matcherType = (INamedTypeSymbol)attributeType.Value!;
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            // TODO: Write a lot more tests for this
+            if (matcherType.IsUnboundGenericType)
+            {
+                if (invocation.TargetMethod.TypeArguments.Length != matcherType.TypeArguments.Length)
+                {
+                    return false;
+                }
+
+                matcherType = matcherType.ConstructedFrom.Construct([.. invocation.TargetMethod.TypeArguments]);
+            }
+
+            return true;
         }
 
         private static void Visit(IOperation? operation, ArgumentTracker tracker)
@@ -164,32 +214,6 @@ namespace Pretender.SourceGenerator.SetupArguments
             foreach (var operation in operations)
             {
                 Visit(operation, tracker);
-            }
-        }
-
-        // Factory method for creating an ArgumentSpec based on the argument operation
-        public static SetupArgumentSpec Create(IArgumentOperation argumentOperation, int argumentPlacement)
-        {
-            var argumentOperationValue = argumentOperation.Value;
-            switch (argumentOperationValue.Kind)
-            {
-                case OperationKind.Literal:
-                    return new LiteralArgumentSpec(
-                        (ILiteralOperation)argumentOperationValue,
-                        argumentOperation,
-                        argumentPlacement);
-                case OperationKind.Invocation:
-                    return new InvocationArgumentSpec(
-                        (IInvocationOperation)argumentOperationValue,
-                        argumentOperation,
-                        argumentPlacement);
-                case OperationKind.LocalReference:
-                    return new LocalReferenceArgumentSpec(
-                        (ILocalReferenceOperation)argumentOperationValue,
-                        argumentOperation,
-                        argumentPlacement);
-                default:
-                    throw new NotImplementedException();
             }
         }
 

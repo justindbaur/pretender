@@ -5,7 +5,7 @@ namespace Pretender.SourceGenerator.Fakes
 {
     internal class ILoggerFake : IKnownFake
     {
-        public bool TryConstruct(INamedTypeSymbol typeSymbol, KnownTypeSymbols knownTypeSymbols, CancellationToken cancellationToken, out ITypeSymbol? fakeType)
+        public bool TryConstruct(INamedTypeSymbol typeSymbol, KnownTypeSymbols knownTypeSymbols, CancellationToken cancellationToken, out INamedTypeSymbol? fakeType)
         {
             fakeType = null;
             if (SymbolEqualityComparer.Default.Equals(typeSymbol, knownTypeSymbols.MicrosoftExtensionsLoggingILogger))

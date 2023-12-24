@@ -11,7 +11,7 @@ namespace Comparison
         {
             var mock = new Moq.Mock<ISimpleInterface>();
 
-             mock.Setup(i => i.Foo(Moq.It.Is<string>(static i => i == "1")))
+             mock.Setup(i => i.Foo(Moq.It.IsAny<string>()))
                 .Returns("2");
 
             var simpleInterface = mock.Object;
@@ -23,7 +23,7 @@ namespace Comparison
         {
             var substitute = NSubstitute.Substitute.For<ISimpleInterface>();
 
-            NSubstitute.SubstituteExtensions.Returns(substitute.Foo(NSubstitute.Arg.Is<string>(static i => i == "1")), "2");
+            NSubstitute.SubstituteExtensions.Returns(substitute.Foo(NSubstitute.Arg.Any<string>()), "2");
 
             return substitute.Foo("1");
         }
@@ -33,7 +33,7 @@ namespace Comparison
         {
             var pretend = Pretend.That<ISimpleInterface>();
 
-            pretend.Setup(i => i.Foo(It.Is<string>(static i => i == "1")))
+            pretend.Setup(i => i.Foo(It.IsAny<string>()))
                 .Returns("2");
 
             var simpleInterface = pretend.Create();

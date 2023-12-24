@@ -3,7 +3,6 @@ using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
-using Microsoft.VisualStudio.TestPlatform.PlatformAbstractions;
 using Pretender;
 using Pretender.SourceGenerator;
 

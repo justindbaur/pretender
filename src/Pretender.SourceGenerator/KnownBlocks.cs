@@ -9,7 +9,7 @@ namespace Pretender.SourceGenerator
     {
         private static readonly AssemblyName s_assemblyName = typeof(KnownBlocks).Assembly.GetName();
         private static readonly string GeneratedCodeAnnotationString = $@"[GeneratedCode(""{s_assemblyName.Name}"", ""{s_assemblyName.Version}"")]";
-        public static MemberDeclarationSyntax InterceptsLocationAttribute { get; } = ((CompilationUnitSyntax)ParseSyntaxTree($$"""
+        public static string InterceptsLocationAttribute { get; } = $$"""
             namespace System.Runtime.CompilerServices
             {
                 using System;
@@ -24,7 +24,7 @@ namespace Pretender.SourceGenerator
                     }
                 }
             }
-            """).GetRoot()).Members[0];
+            """;
 
         public static NamespaceDeclarationSyntax OurNamespace { get; }
             = NamespaceDeclaration(IdentifierName("Pretender.SourceGeneration"));

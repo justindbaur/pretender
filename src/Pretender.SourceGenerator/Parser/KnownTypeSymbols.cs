@@ -1,15 +1,19 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using System.Collections.Concurrent;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
 namespace Pretender.SourceGenerator.Parser
 {
     internal sealed class KnownTypeSymbols
     {
+        private readonly ConcurrentDictionary<INamedTypeSymbol, Dictionary<IMethodSymbol, MethodStrategy>> _cachedTypeMethodNames = new(SymbolEqualityComparer.Default);
+
         public Compilation Compilation { get; }
 
         // INamedTypeSymbols
         public INamedTypeSymbol? Pretend { get; }
         public INamedTypeSymbol? Pretend_Unbound { get; }
+        public INamedTypeSymbol? AnyMatcher { get; }
 
         public INamedTypeSymbol String { get; }
         public INamedTypeSymbol? Task { get; }
@@ -33,6 +37,8 @@ namespace Pretender.SourceGenerator.Parser
             // TODO: Get known types
             Pretend = compilation.GetTypeByMetadataName("Pretender.Pretend`1");
             Pretend_Unbound = Pretend?.ConstructUnboundGenericType();
+            AnyMatcher = compilation.GetTypeByMetadataName("Pretender.Matchers.AnyMatcher");
+
 
             String = compilation.GetSpecialType(SpecialType.System_String);
             Task = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task");
@@ -55,6 +61,38 @@ namespace Pretender.SourceGenerator.Parser
 
             // TODO: data protection
             // TODO: FakeTimeProvider
+        }
+
+        public MethodStrategy GetSingleMethodStrategy(IMethodSymbol method)
+        {
+            return GetTypesStrategies(method.ContainingType)[method];
+        }
+
+        public IReadOnlyDictionary<IMethodSymbol, MethodStrategy> GetTypesStrategies(INamedTypeSymbol type)
+        {
+            return _cachedTypeMethodNames.GetOrAdd(
+                type,
+                static (type) =>
+                {
+                    Dictionary<IMethodSymbol, MethodStrategy> methodDictionary = new(SymbolEqualityComparer.Default);
+                    var groupedByNameMethods = type.GetApplicableMethods()
+                        .GroupBy(m => m.Name);
+
+                    foreach (var groupedByNameMethod in groupedByNameMethods)
+                    {
+                        var methods = groupedByNameMethod.ToArray();
+                        if (methods.Length == 1)
+                        {
+                            methodDictionary.Add(methods[0], new ByNameMethodStrategy(methods[0]));
+                            continue;
+                        }
+
+                        // More than on method has this name, next try number of arguments
+                    }
+
+                    return methodDictionary;
+                }
+            );
         }
 
         public static bool IsPretend(INamedTypeSymbol type)

@@ -3,6 +3,7 @@ using Pretender.Settings;
 
 namespace Pretender.SourceGenerator
 {
+    // The properties on this class need to match the property names in PretenderSettingsAttribute
     internal class PretenderSettings
     {
         public static PretenderSettings Default { get; } = new PretenderSettings(

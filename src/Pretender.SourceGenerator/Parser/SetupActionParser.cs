@@ -42,13 +42,37 @@ namespace Pretender.SourceGenerator.Parser
 
             var arguments = candidate.Arguments;
 
-            var builder = ImmutableArray.CreateBuilder<SetupArgumentSpec>(arguments.Length);
+            var builder = ImmutableArray.CreateBuilder<SetupArgumentEmitter>(arguments.Length);
+
+            var argumentDiagnostics = new List<Diagnostic>();
+
             for (var i = 0; i < arguments.Length; i++)
             {
-                builder.Add(SetupArgumentSpec.Create(arguments[i], i));
+                var argumentSpec = new SetupArgumentSpec(arguments[i], _knownTypeSymbols);
+                var argumentParser = new SetupArgumentParser(argumentSpec);
+
+                var (emitter, diagnostics) = argumentParser.Parse(cancellationToken);
+
+                // If any emitter comes back null, return the diagnostics it came back with and all the ones we've collected for other parsing operations
+                if (emitter == null)
+                {
+                    Debug.Assert(diagnostics.HasValue);
+                    argumentDiagnostics.AddRange(diagnostics!.Value);
+                    return (null, argumentDiagnostics.ToImmutableArray());
+                }
+
+                if (diagnostics is ImmutableArray<Diagnostic> parseDiagnostics)
+                {
+                    argumentDiagnostics.AddRange(parseDiagnostics);
+                }
+
+                builder.Add(emitter);
             }
 
-            return (new SetupActionEmitter(_pretendType, candidate.Method, builder.MoveToImmutable(), _knownTypeSymbols), null);
+            return (
+                new SetupActionEmitter(_pretendType, candidate.Method, builder.MoveToImmutable(), _knownTypeSymbols),
+                argumentDiagnostics.Count != 0 ? argumentDiagnostics.ToImmutableArray() : null
+            );
         }
 
         private ImmutableArray<InvocationCandidate> GetInvocationCandidates(CancellationToken cancellationToken)

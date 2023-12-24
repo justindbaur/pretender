@@ -1,8 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
-using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+using Pretender.SourceGenerator.Writing;
 
 namespace Pretender.SourceGenerator.Emitter
 {
@@ -21,47 +19,25 @@ namespace Pretender.SourceGenerator.Emitter
             _invocationOperation = invocationOperation;
         }
 
-        public MethodDeclarationSyntax Emit(int index, CancellationToken cancellationToken)
+        public void Emit(IndentedTextWriter writer, int index, CancellationToken cancellationToken)
         {
-            var setupInvocation = _setupActionEmitter.CreateSetupGetter(cancellationToken);
+            // TODO: Create method trivia
+            var location = new InterceptsLocationInfo(_invocationOperation);
+            writer.WriteLine(@$"[InterceptsLocation(@""{location.FilePath}"", {location.LineNumber}, {location.CharacterNumber})]");
 
-            // var setup = pretend.GetOrCreateSetup(...);
-            var setupLocal = LocalDeclarationStatement(VariableDeclaration(CommonSyntax.VarType)
-                .WithVariables(SingletonSeparatedList(VariableDeclarator(CommonSyntax.SetupIdentifier)
-                    .WithInitializer(EqualsValueClause(setupInvocation)))));
+            // TODO: Get property setup expression type
+            var setupExpressionType = _returnType != null
+                ? $"Func<{_pretendType.ToFullDisplayString()}, {_returnType.ToUnknownTypeString()}>"
+                : $"Action<{_pretendType.ToFullDisplayString()}>";
 
-            TypeSyntax pretendType = ParseTypeName(_pretendType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
 
-            TypeSyntax setupExpressionType = _returnType == null
-                ? GenericName("Action").AddTypeArgumentListArguments(pretendType)
-                : GenericName("Func").AddTypeArgumentListArguments(pretendType, _returnType.AsUnknownTypeSyntax());
-
-            // setup.Verify(called);
-            var verifyInvocation = InvocationExpression(
-                MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    IdentifierName(CommonSyntax.SetupIdentifier),
-                    IdentifierName("Verify")
-                )
-            )
-                .AddArgumentListArguments(Argument(IdentifierName(CommonSyntax.CalledIdentifier)));
-
-            var interceptsInfo = new InterceptsLocationInfo(_invocationOperation);
-
-            // public static void Verify0(
-            return MethodDeclaration(CommonSyntax.VoidType, Identifier($"Verify{index}"))
-                .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
-                .AddParameterListParameters(
-                    [
-                        Parameter(Identifier("pretend"))
-                            .WithType(CommonSyntax.GenericPretendType.AddTypeArgumentListArguments(pretendType))
-                            .AddModifiers(Token(SyntaxKind.ThisKeyword)),
-                        Parameter(Identifier("setupExpression"))
-                            .WithType(setupExpressionType),
-                        CommonSyntax.CalledParameter
-                    ])
-                .AddBodyStatements([setupLocal, ExpressionStatement(verifyInvocation)])
-                .AddAttributeLists(AttributeList(SingletonSeparatedList(interceptsInfo.ToAttributeSyntax())));
+            writer.WriteLine($"internal static void Verify{index}(this Pretend<{_pretendType.ToUnknownTypeString()}> pretend, {setupExpressionType} setupExpression, Called called)");
+            using (writer.WriteBlock())
+            {
+                writer.Write("var setup = ");
+                _setupActionEmitter.Emit(writer, cancellationToken);
+                writer.WriteLine("setup.Verify(called);");
+            }
         }
     }
 }

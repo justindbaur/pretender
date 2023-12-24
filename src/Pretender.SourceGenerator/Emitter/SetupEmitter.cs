@@ -1,8 +1,5 @@
-﻿using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
-using Microsoft.CodeAnalysis.Operations;
+﻿using Microsoft.CodeAnalysis.Operations;
+using Pretender.SourceGenerator.Writing;
 
 namespace Pretender.SourceGenerator.Emitter
 {
@@ -18,37 +15,34 @@ namespace Pretender.SourceGenerator.Emitter
         }
 
         // TODO: Run cancellationToken a lot more
-        public MemberDeclarationSyntax Emit(int index, CancellationToken cancellationToken)
+        public void Emit(IndentedTextWriter writer, int index, CancellationToken cancellationToken)
         {
             var setupMethod = _setupActionEmitter.SetupMethod;
             var pretendType = _setupActionEmitter.PretendType;
 
-            var interceptsLocation = new InterceptsLocationInfo(_setupInvocation);
+            var location = new InterceptsLocationInfo(_setupInvocation);
 
-            // TODO: This is wrong
-            var typeArguments = setupMethod.ReturnsVoid
-                ? TypeArgumentList(SingletonSeparatedList(ParseTypeName(pretendType.ToFullDisplayString())))
-                : TypeArgumentList(SeparatedList([ParseTypeName(pretendType.ToFullDisplayString()), setupMethod.ReturnType.AsUnknownTypeSyntax()]));
+            string typeArgs;
+            string actionType;
+            if (setupMethod.ReturnsVoid)
+            {
+                typeArgs = $"<{pretendType.ToFullDisplayString()}>";
+                actionType = "Action";
+            }
+            else
+            {
+                typeArgs = $"<{pretendType.ToFullDisplayString()}, {setupMethod.ReturnType.ToUnknownTypeString()}>";
+                actionType = "Func";
+            }
 
-            var returnType = GenericName("IPretendSetup")
-                .WithTypeArgumentList(typeArguments);
-
-            var setupCreatorInvocation = _setupActionEmitter.CreateSetupGetter(cancellationToken);
-
-            return MethodDeclaration(returnType, $"Setup{index}")
-                .WithBody(Block(ReturnStatement(setupCreatorInvocation)))
-                .WithParameterList(ParameterList(SeparatedList(new[]
-                {
-                    Parameter(Identifier("pretend"))
-                        .WithModifiers(TokenList(Token(SyntaxKind.ThisKeyword)))
-                        .WithType(ParseTypeName($"Pretend<{pretendType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>")),
-
-                    Parameter(Identifier("setupExpression"))
-                        .WithType(GenericName(setupMethod.ReturnsVoid ? "Action" : "Func").WithTypeArgumentList(typeArguments)),
-                })))
-                .WithModifiers(TokenList(Token(SyntaxKind.InternalKeyword), Token(SyntaxKind.StaticKeyword)))
-                .WithAttributeLists(SingletonList(AttributeList(
-                    SingletonSeparatedList(interceptsLocation.ToAttributeSyntax()))));
+            writer.WriteLine(@$"[InterceptsLocation(@""{location.FilePath}"", {location.LineNumber}, {location.CharacterNumber})]");
+            writer.Write($"internal static IPretendSetup{typeArgs} Setup{index}");
+            writer.WriteLine($"(this Pretend<{pretendType.ToUnknownTypeString()}> pretend, {actionType}{typeArgs} setupExpression)");
+            using (writer.WriteBlock())
+            {
+                writer.Write("return ");
+                _setupActionEmitter.Emit(writer, cancellationToken);
+            }
         }
     }
 }

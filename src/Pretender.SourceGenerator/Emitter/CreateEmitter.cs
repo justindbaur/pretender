@@ -1,9 +1,9 @@
-﻿using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
+﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
+using Pretender.SourceGenerator.Writing;
 
 namespace Pretender.SourceGenerator.Emitter
 {
@@ -24,67 +24,62 @@ namespace Pretender.SourceGenerator.Emitter
 
         public IInvocationOperation Operation => _originalOperation;
 
-        public MethodDeclarationSyntax Emit(CancellationToken cancellationToken)
+        public void Emit(IndentedTextWriter writer, CancellationToken cancellationToken)
         {
             var returnType = _originalOperation.TargetMethod.ReturnType;
 
-            var returnTypeSyntax = returnType.AsUnknownTypeSyntax();
+            var returnTypeSyntax = returnType.ToUnknownTypeString();
 
-            TypeParameterSyntax[] typeParameters;
-            ParameterSyntax[] methodParameters;
-            ArgumentSyntax[] constructorArguments;
-
-            if (_typeArguments.HasValue)
+            foreach (var location in _locations)
             {
-                typeParameters = new TypeParameterSyntax[_typeArguments.Value.Length];
+                writer.WriteLine(@$"[InterceptsLocation(@""{location.FilePath}"", {location.LineNumber}, {location.CharacterNumber})]");
+            }
+            writer.Write($"internal static {returnType.ToUnknownTypeString()} Create{_index}");
 
-                // We always take the Pretend<T> argument first as a this parameter
-                methodParameters = new ParameterSyntax[_typeArguments.Value.Length + 1];
-                constructorArguments = new ArgumentSyntax[_typeArguments.Value.Length + 1];
+            if (_typeArguments is ImmutableArray<ITypeSymbol> typeArguments && typeArguments.Length > 0)
+            {
+                // <T0, T1>(this Pretend<IInterface> pretend, T0 arg0, T1 arg1)
+                writer.Write("<");
 
                 for (var i = 0; i < _typeArguments.Value.Length; i++)
                 {
-                    var typeName = $"T{i}";
-                    var argName = $"arg{i}";
-
-                    typeParameters[i] = TypeParameter(typeName);
-                    methodParameters[i + 1] = Parameter(Identifier(argName))
-                        .WithType(ParseTypeName(typeName));
-                    constructorArguments[i + 1] = Argument(IdentifierName(argName));
+                    writer.Write($"T{i}");
                 }
+
+                writer.Write($">(this Pretend<{returnTypeSyntax}> pretend");
+
+                for (var i = 0; i < _typeArguments.Value.Length; i++)
+                {
+                    writer.Write($", T{i} arg{i}");
+                }
+
+                writer.WriteLine(")");
             }
             else
             {
-                typeParameters = [];
-                methodParameters = new ParameterSyntax[1];
-                constructorArguments = new ArgumentSyntax[1];
+                // TODO: Handle the params overload
+                writer.WriteLine($"(this Pretend<{returnTypeSyntax}> pretend)");
             }
 
-            methodParameters[0] = Parameter(Identifier("pretend"))
-                .WithType(GenericName("Pretend")
-                    .AddTypeArgumentListArguments(returnTypeSyntax))
-                .WithModifiers(TokenList(Token(SyntaxKind.ThisKeyword))
-            );
-
-            constructorArguments[0] = Argument(IdentifierName("pretend"));
-
-            var objectCreation = ObjectCreationExpression(ParseTypeName(returnType.ToPretendName()))
-                .WithArgumentList(ArgumentList(SeparatedList(constructorArguments)));
-
-            var method = MethodDeclaration(returnTypeSyntax, $"Create{_index}")
-                .WithBody(Block(ReturnStatement(objectCreation)))
-                .WithParameterList(ParameterList(SeparatedList(methodParameters)))
-                .WithModifiers(TokenList(Token(SyntaxKind.InternalKeyword), Token(SyntaxKind.StaticKeyword)));
-
-            method = method.WithAttributeLists(List(CreateInterceptsAttributes()));
-
-            if (typeParameters.Length > 0)
+            using (writer.WriteBlock())
             {
-                return method
-                    .WithTypeParameterList(TypeParameterList(SeparatedList(typeParameters)));
-            }
+                writer.Write($"return new {returnType.ToPretendName()}(pretend");
 
-            return method;
+                if (_typeArguments.HasValue)
+                {
+                    for (int i = 0; i < _typeArguments.Value.Length; i++)
+                    {
+                        writer.Write($", arg{i}");
+                    }
+
+                    writer.WriteLine(");");
+                }
+                else
+                {
+                    // TODO: Handle params overload
+                    writer.WriteLine(");");
+                }
+            }
         }
 
         private ImmutableArray<AttributeListSyntax> CreateInterceptsAttributes()

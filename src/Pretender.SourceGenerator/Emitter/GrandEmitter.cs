@@ -1,7 +1,9 @@
 ﻿using System.Collections.Immutable;
+using System.Security.Cryptography.X509Certificates;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Pretender.SourceGenerator.Writing;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Pretender.SourceGenerator.Emitter
@@ -25,78 +27,81 @@ namespace Pretender.SourceGenerator.Emitter
             _createEmitters = createEmitters;
         }
 
-        public CompilationUnitSyntax Emit(CancellationToken cancellationToken)
+        public string Emit(CancellationToken cancellationToken)
         {
-            var namespaceDeclaration = KnownBlocks.OurNamespace
-                .AddUsings(
-                    UsingDirective(ParseName("System")),
-                    KnownBlocks.CompilerServicesUsing,
-                    UsingDirective(ParseName("System.Threading.Tasks")),
-                    KnownBlocks.PretenderUsing,
-                    KnownBlocks.PretenderInternalsUsing
-                );
+            var writer = new IndentedTextWriter();
 
-            foreach (var pretendEmitter in _pretendEmitters)
+            // InceptsLocationAttribute
+            writer.Write(KnownBlocks.InterceptsLocationAttribute, isMultiline: true);
+            writer.WriteLine();
+            writer.WriteLine();
+
+            writer.WriteLine("namespace Pretender.SourceGeneration");
+            using (writer.WriteBlock())
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                namespaceDeclaration = namespaceDeclaration
-                    .AddMembers(pretendEmitter.Emit(cancellationToken));
-            }
+                writer.WriteLine("using System;");
+                writer.WriteLine("using System.Reflection;");
+                writer.WriteLine("using System.Runtime.CompilerServices;");
+                writer.WriteLine("using System.Threading.Tasks;");
+                writer.WriteLine("using Pretender;");
+                writer.WriteLine("using Pretender.Internals;");
+                writer.WriteLine();
 
-            var setupInterceptorsClass = ClassDeclaration("SetupInterceptors")
-                .WithModifiers(TokenList(Token(SyntaxKind.FileKeyword), Token(SyntaxKind.StaticKeyword)));
+                foreach (var pretendEmitter in _pretendEmitters)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    pretendEmitter.Emit(writer, cancellationToken);
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                writer.WriteLine();
+                writer.WriteLine("file static class SetupInterceptors");
+                using (writer.WriteBlock())
+                {
+                    int setupIndex = 0;
+                    foreach (var setupEmitter in _setupEmitters)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        setupEmitter.Emit(writer, setupIndex, cancellationToken);
+                        setupIndex++;
+                    }
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                writer.WriteLine();
+                writer.WriteLine("file static class VerifyInterceptors");
+                using (writer.WriteBlock())
+                {
+                    int verifyIndex = 0;
+                    foreach (var verifyEmitter in _verifyEmitters)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        verifyEmitter.Emit(writer, verifyIndex, cancellationToken);
+                        verifyIndex++;
+                    }
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                writer.WriteLine();
+                writer.WriteLine("file static class CreateInterceptors");
+                using (writer.WriteBlock())
+                {
+                    int createIndex = 0;
+                    foreach (var createEmitter in _createEmitters)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        createEmitter.Emit(writer, cancellationToken);
+                        createIndex++;
+                    }
+                }
+            }
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            int setupIndex = 0;
-            foreach (var setupEmitter in _setupEmitters)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                setupInterceptorsClass = setupInterceptorsClass
-                    .AddMembers(setupEmitter.Emit(setupIndex, cancellationToken));
-                setupIndex++;
-            }
-
-            var verifyInterceptorsClass = ClassDeclaration("VerifyInterceptors")
-                .AddModifiers(Token(SyntaxKind.FileKeyword), Token(SyntaxKind.StaticKeyword));
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            int verifyIndex = 0;
-            foreach (var verifyEmitter in _verifyEmitters)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                verifyInterceptorsClass = verifyInterceptorsClass
-                    .AddMembers(verifyEmitter.Emit(verifyIndex, cancellationToken));
-                verifyIndex++;
-            }
-
-            var createInterceptorsClass = ClassDeclaration("CreateInterceptors")
-                .AddModifiers(Token(SyntaxKind.FileKeyword), Token(SyntaxKind.StaticKeyword));
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            int createIndex = 0;
-            foreach (var createEmitter in _createEmitters)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                createInterceptorsClass = createInterceptorsClass
-                    .AddMembers(createEmitter.Emit(cancellationToken));
-                createIndex++;
-            }
-
-            namespaceDeclaration = namespaceDeclaration
-                .AddMembers(setupInterceptorsClass, verifyInterceptorsClass, createInterceptorsClass);
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            return CompilationUnit()
-                .AddMembers(
-                KnownBlocks.InterceptsLocationAttribute,
-                namespaceDeclaration)
-                .NormalizeWhitespace();
+            return writer.ToString();
         }
     }
 }
