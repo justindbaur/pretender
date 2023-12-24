@@ -19,11 +19,11 @@ var myInterface = pretendMyInterface.Create();
 
 > Doing a simple `Is.IsAny<string>()` or equivalent call.
 
-| Method          | Mean         | Error      | StdDev       | Median       | Gen0   | Gen1   | Allocated |
-|---------------- |-------------:|-----------:|-------------:|-------------:|-------:|-------:|----------:|
-| MoqTest         | 46,155.49 ns | 919.804 ns | 1,999.579 ns | 45,122.63 ns | 1.3428 | 1.2207 |    8850 B |
-| NSubstituteTest |  4,011.88 ns |  76.549 ns |    85.084 ns |  4,004.60 ns | 1.2360 | 0.0381 |    7760 B |
-| PretenderTest   |     31.41 ns |   0.683 ns |     1.231 ns |     30.86 ns | 0.0268 |      - |     168 B |
+| Method          | Mean         | Error      | StdDev       | Median       | Ratio  | RatioSD | Gen0   | Gen1   | Allocated | Alloc Ratio |
+|---------------- |-------------:|-----------:|-------------:|-------------:|-------:|--------:|-------:|-------:|----------:|------------:|
+| MoqTest         | 45,863.83 ns | 897.457 ns | 1,641.051 ns | 45,172.41 ns | 509.57 |   19.58 | 1.3428 | 1.2207 |    8850 B |       22.12 |
+| NSubstituteTest |  4,151.76 ns |  82.517 ns |   126.012 ns |  4,133.53 ns |  45.69 |    1.68 | 1.2360 | 0.0381 |    7760 B |       19.40 |
+| PretenderTest   |     91.08 ns |   1.432 ns |     1.270 ns |     91.33 ns |   1.00 |    0.00 | 0.0637 |      - |     400 B |        1.00 |
 
 ## 0.1.0
 
