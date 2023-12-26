@@ -22,27 +22,5 @@ namespace Pretender.SourceGenerator
         public string FilePath { get; }
         public int LineNumber { get; }
         public int CharacterNumber { get; }
-
-        public AttributeSyntax ToAttributeSyntax()
-        {
-            return Attribute(IdentifierName("InterceptsLocation"))
-                    .WithArgumentList(AttributeArgumentList(SeparatedList(new[]
-                    {
-                        AttributeArgument(
-                            LiteralExpression(
-                                SyntaxKind.StringLiteralExpression,
-                                Literal(FilePath))),
-
-                        AttributeArgument(
-                            LiteralExpression(
-                                SyntaxKind.NumericLiteralExpression,
-                                Literal(LineNumber))),
-
-                        AttributeArgument(
-                            LiteralExpression(
-                                SyntaxKind.NumericLiteralExpression,
-                                Literal(CharacterNumber))),
-                    })));
-        }
     }
 }

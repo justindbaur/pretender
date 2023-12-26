@@ -121,7 +121,7 @@ namespace SourceGeneratorTests
         private void CompareAgainstBaseline(GeneratedSourceResult result, string? testMethodName = null)
         {
             var normalizedName = result.HintName[..^3].Replace('.', '_') + ".cs";
-#if !GENERATE_SOURCE
+#if GENERATE_SOURCE
             var resultFileName = result.HintName.Replace('.', '_');
             var baseLineName = $"{GetType().Name}.{testMethodName}.{normalizedName}";
             var resourceName = Assert.Single(typeof(TestBase).Assembly.GetManifestResourceNames()

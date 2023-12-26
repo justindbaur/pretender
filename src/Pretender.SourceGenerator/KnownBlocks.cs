@@ -1,7 +1,4 @@
 ﻿using System.Reflection;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Pretender.SourceGenerator
 {
@@ -25,39 +22,5 @@ namespace Pretender.SourceGenerator
                 }
             }
             """;
-
-        public static MemberAccessExpressionSyntax TaskCompletedTask = MemberAccessExpression(
-            SyntaxKind.SimpleMemberAccessExpression,
-            IdentifierName("Task"),
-            IdentifierName("CompletedTask")
-        );
-
-        public static MemberAccessExpressionSyntax ValueTaskCompletedTask = MemberAccessExpression(
-            SyntaxKind.SimpleMemberAccessExpression,
-            IdentifierName("ValueTask"),
-            IdentifierName("CompletedTask")
-        );
-
-        public static InvocationExpressionSyntax TaskFromResult(TypeSyntax resultType, ExpressionSyntax resultValue) => InvocationExpression(
-            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                IdentifierName("Task"),
-                GenericName("FromResult")
-                    .AddTypeArgumentListArguments(resultType))
-        )
-            .AddArgumentListArguments(Argument(resultValue));
-
-        public static InvocationExpressionSyntax ValueTaskFromResult(TypeSyntax resultType, ExpressionSyntax resultValue)
-        {
-            // ValueTask.FromResult<T>
-            var memberAccess = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                IdentifierName("ValueTask"),
-                GenericName("FromResult")
-                    .AddTypeArgumentListArguments(resultType));
-
-            // ValueTask.FromResult<T>(value)
-            return InvocationExpression(memberAccess,
-                ArgumentList(
-                    SingletonSeparatedList(Argument(resultValue))));
-        }
     }
 }
