@@ -26,7 +26,7 @@ namespace Pretender.Matchers
         {
             var listeners = s_listeners;
 
-            if (listeners != null &&  listeners.Count > 0)
+            if (listeners != null && listeners.Count > 0)
             {
                 listener = listeners.Peek();
                 return true;

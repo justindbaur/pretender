@@ -26,18 +26,6 @@ namespace Pretender.SourceGenerator
             }
             """;
 
-        public static NamespaceDeclarationSyntax OurNamespace { get; }
-            = NamespaceDeclaration(IdentifierName("Pretender.SourceGeneration"));
-
-        public static UsingDirectiveSyntax PretenderUsing { get; }
-            = UsingDirective(ParseName("Pretender"));
-
-        public static UsingDirectiveSyntax PretenderInternalsUsing { get; }
-            = UsingDirective(ParseName("Pretender.Internals"));
-
-        public static UsingDirectiveSyntax CompilerServicesUsing { get; }
-            = UsingDirective(ParseName("System.Runtime.CompilerServices"));
-
         public static MemberAccessExpressionSyntax TaskCompletedTask = MemberAccessExpression(
             SyntaxKind.SimpleMemberAccessExpression,
             IdentifierName("Task"),
@@ -67,7 +55,7 @@ namespace Pretender.SourceGenerator
                     .AddTypeArgumentListArguments(resultType));
 
             // ValueTask.FromResult<T>(value)
-            return InvocationExpression(memberAccess, 
+            return InvocationExpression(memberAccess,
                 ArgumentList(
                     SingletonSeparatedList(Argument(resultValue))));
         }

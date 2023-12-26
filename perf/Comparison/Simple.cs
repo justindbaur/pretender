@@ -11,8 +11,8 @@ namespace Comparison
         {
             var mock = new Moq.Mock<ISimpleInterface>();
 
-             mock.Setup(i => i.Foo(Moq.It.IsAny<string>()))
-                .Returns("2");
+            mock.Setup(i => i.Foo(Moq.It.IsAny<string>()))
+               .Returns("2");
 
             var simpleInterface = mock.Object;
             return simpleInterface.Foo("1");

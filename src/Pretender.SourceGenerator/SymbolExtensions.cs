@@ -41,88 +41,11 @@ namespace Pretender.SourceGenerator
             return true;
         }
 
-        public static TypeSyntax AsUnknownTypeSyntax(this ITypeSymbol type)
-        {
-            var typeSyntax = ParseTypeName(type.ToFullDisplayString());
-            if (type.NullableAnnotation == NullableAnnotation.Annotated)
-            {
-                return NullableType(typeSyntax, Token(SyntaxKind.QuestionToken));
-            }
-
-            return typeSyntax;
-        }
-
         public static string ToUnknownTypeString(this ITypeSymbol type)
         {
             return type.NullableAnnotation == NullableAnnotation.Annotated
                 ? $"{type.ToFullDisplayString()}?"
                 : type.ToFullDisplayString();
-        }
-
-        public static ExpressionSyntax ToDefaultValueSyntax(this INamedTypeSymbol type, KnownTypeSymbols knownTypeSymbols)
-        {
-            // They have explicitly annotated this type as nullable, so return null
-            if (type.NullableAnnotation == NullableAnnotation.Annotated)
-            {
-                return LiteralExpression(SyntaxKind.DefaultLiteralExpression);
-            }
-
-            var nullableEnabled = type.NullableAnnotation != NullableAnnotation.None;
-
-            var comparer = SymbolEqualityComparer.Default;
-
-            if (type.IsUnboundGenericType)
-            {
-                throw new NotImplementedException("We believe this should have been impossible, please report this issue with a minimally reproducible sample.");
-            }
-
-            if (type.IsGenericType)
-            {
-                var unboundType = type.ConstructUnboundGenericType();
-
-                if (comparer.Equals(unboundType, knownTypeSymbols.TaskOfT_Unbound))
-                {
-                    // Create Task.FromResult();
-                    // TODO: Is this ever an unsafe cast? How could you have Task<anonymous_type>?
-                    var resultType = (INamedTypeSymbol)type.TypeArguments[0];
-
-                    // Recursion? Issue?
-                    return KnownBlocks.TaskFromResult(resultType.AsUnknownTypeSyntax(), resultType.ToDefaultValueSyntax(knownTypeSymbols));
-                }
-
-                if (comparer.Equals(unboundType, knownTypeSymbols.ValueTaskOfT_Unbound))
-                {
-                    var resultType = (INamedTypeSymbol)type.TypeArguments[0];
-
-                    // Recursion!
-                    return KnownBlocks.ValueTaskFromResult(resultType.AsUnknownTypeSyntax(), resultType.ToDefaultValueSyntax(knownTypeSymbols));
-                }
-
-                // TODO: Support IEnumerable, Lists, Arrays, and others
-            }
-
-            if (comparer.Equals(type, knownTypeSymbols.Task))
-            {
-                return KnownBlocks.TaskCompletedTask;
-            }
-
-            if (comparer.Equals(type, knownTypeSymbols.ValueTask))
-            {
-                return KnownBlocks.ValueTaskCompletedTask;
-            }
-
-            if (comparer.Equals(type, knownTypeSymbols.String))
-            {
-                // They have requested not-null so special case non-null string to be string.Empty
-                // people may not like this.
-                return MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    PredefinedType(Token(SyntaxKind.StringKeyword)),
-                    IdentifierName("Empty"));
-            }
-
-            // No better default found, just use 'default' even though it might not be in line with nullability annotations
-            return LiteralExpression(SyntaxKind.DefaultLiteralExpression);
         }
 
         public static string ToFullDisplayString(this ITypeSymbol type)

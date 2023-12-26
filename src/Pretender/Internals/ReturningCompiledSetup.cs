@@ -4,7 +4,7 @@ using System.Reflection;
 
 namespace Pretender.Internals
 {
-    
+
 
     [EditorBrowsable(EditorBrowsableState.Never)]
     [Obsolete("This method is only meant to be used by source generators")]

@@ -36,6 +36,6 @@ namespace Pretender.SourceGenerator
             Behavior = behavior;
         }
 
-        public PretendBehavior Behavior {  get; }
+        public PretendBehavior Behavior { get; }
     }
 }

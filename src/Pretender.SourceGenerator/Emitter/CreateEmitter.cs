@@ -1,8 +1,8 @@
-﻿using Microsoft.CodeAnalysis.Operations;
-using System.Collections.Immutable;
+﻿using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
-using Pretender.SourceGenerator.Writing;
+using Microsoft.CodeAnalysis.Operations;
 using Pretender.SourceGenerator.Parser;
+using Pretender.SourceGenerator.Writing;
 
 namespace Pretender.SourceGenerator.Emitter
 {

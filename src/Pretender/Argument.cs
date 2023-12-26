@@ -21,7 +21,7 @@ namespace Pretender
         public object? Value
         {
             readonly get { return _value; }
-            set {  _value = value; }
+            set { _value = value; }
         }
         public readonly Type ActualType => _value != null ? _value.GetType() : _declaredType;
     }

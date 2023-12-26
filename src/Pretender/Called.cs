@@ -48,7 +48,7 @@ namespace Pretender
         public void Validate(int callCount)
         {
             switch (_calledKind)
-            { 
+            {
                 case CalledKind.Exact:
                     if (callCount != _from)
                     {

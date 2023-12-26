@@ -4,7 +4,7 @@ namespace Pretender.SourceGenerator
 {
     internal static class DiagnosticDescriptors
     {
-        public static DiagnosticDescriptor UnsupportedLanguageVersion { get; } = new (
+        public static DiagnosticDescriptor UnsupportedLanguageVersion { get; } = new(
             "PRTND001",
             "Unsupported language version",
             "",
