@@ -1,10 +1,11 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics;
+using Pretender.Internals;
 
 namespace Pretender;
 
 [DebuggerDisplay("{DebuggerToString(),nq}")]
-public sealed partial class Pretend<T>
+public sealed partial class Pretend<T> : ICallHandler
 {
     // TODO: Should we minimize allocations for rarely called mocks?
     private List<CallInfo>? _calls;
@@ -62,9 +63,7 @@ public sealed partial class Pretend<T>
         called.Validate(timesCalled);
     }
 
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    [Obsolete("This method is only meant to be used by source generators")]
-    public void Handle(CallInfo callInfo)
+    void ICallHandler.Handle(CallInfo callInfo)
     {
         _calls ??= [];
         _calls.Add(callInfo);

@@ -9,11 +9,11 @@ namespace Pretender.Internals
         Pretend<T> pretend,
         MethodInfo methodInfo,
         Matcher matcher,
-        object? target)
+        Delegate setup)
     {
         private readonly MethodInfo _methodInfo = methodInfo;
         private readonly Matcher _matcher = matcher;
-        private readonly object? _target = target;
+        private readonly Delegate _setup = setup;
         protected Behavior? _behavior;
 
         public Pretend<T> Pretend { get; } = pretend;
@@ -46,7 +46,7 @@ namespace Pretender.Internals
                 return false;
             }
 
-            if (!_matcher(callInfo, _target))
+            if (!_matcher(callInfo, _setup))
             {
                 return false;
             }

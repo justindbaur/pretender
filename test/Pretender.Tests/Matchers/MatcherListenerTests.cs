@@ -1,4 +1,4 @@
-﻿using Pretender.Matchers;
+﻿using Pretender.Internals;
 
 namespace Pretender.Tests.Matchers
 {

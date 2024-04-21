@@ -14,9 +14,11 @@ namespace Pretender.SourceGenerator.Emitter
 
         protected SetupArgumentSpec ArgumentSpec { get; }
 
+        public IParameterSymbol Parameter => ArgumentSpec.Parameter;
+
         public virtual bool EmitsMatcher => true;
         public ImmutableArray<ILocalSymbol> NeededLocals { get; }
-        public bool NeedsCapturer { get; }
+        public virtual bool NeedsCapturer { get; }
 
         public abstract void EmitArgumentMatcher(IndentedTextWriter writer, CancellationToken cancellationToken);
 

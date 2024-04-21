@@ -47,14 +47,14 @@ namespace Pretender.SourceGenerator.Emitter
                 writer.WriteLine();
 
                 // instance fields
-                writer.WriteLine($"private readonly Pretend<{_pretendType.ToFullDisplayString()}> _pretend;");
+                writer.WriteLine($"private readonly ICallHandler _callHandler;");
                 writer.WriteLine();
 
                 // main constructor
-                writer.WriteLine($"public {_knownTypeSymbols.GetPretendName(PretendType)}(Pretend<{_pretendType.ToFullDisplayString()}> pretend)");
+                writer.WriteLine($"public {_knownTypeSymbols.GetPretendName(PretendType)}(ICallHandler callHandler)");
                 using (writer.WriteBlock())
                 {
-                    writer.WriteLine("_pretend = pretend;");
+                    writer.WriteLine("_callHandler = callHandler;");
                 }
 
                 token.ThrowIfCancellationRequested();
@@ -147,7 +147,7 @@ namespace Pretender.SourceGenerator.Emitter
                 writer.WriteLine($"object?[] __arguments__ = [{string.Join(", ", methodSymbol.Parameters.Select(p => p.Name))}];");
                 // TODO: Probably create an Argument object
                 writer.WriteLine($"var __callInfo__ = new CallInfo({_methodStrategies[methodSymbol].UniqueName}_MethodInfo, __arguments__);");
-                writer.WriteLine("_pretend.Handle(__callInfo__);");
+                writer.WriteLine("_callHandler.Handle(__callInfo__);");
 
                 foreach (var parameter in methodSymbol.Parameters)
                 {

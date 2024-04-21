@@ -45,9 +45,30 @@ namespace Pretender.SourceGenerator.Emitter
             if (anyEmitMatcherStatements)
             {
                 matcherName = "matchCall";
-                writer.WriteLine("Matcher matchCall = (callInfo, target) =>");
+                writer.WriteLine("Matcher matchCall = (callInfo, setup) =>");
                 writer.WriteLine("{");
                 writer.IncreaseIndent();
+
+                if (_setupArgumentEmitters.Any(a => a.NeedsCapturer))
+                {
+                    // TODO: Create single use call handler
+                    writer.WriteLine("var singleUseCallHandler = new SingleUseCallHandler();");
+                    writer.WriteLine($"var fake = new {_knownTypeSymbols.GetPretendName(PretendType)}(singleUseCallHandler);");
+                    // Emit and run capturer
+                    writer.WriteLine("var listener = MatcherListener.StartListening();");
+                    writer.WriteLine("setup.Method.Invoke(setup.Target, [fake]);");
+
+                    writer.WriteLine("listener.Dispose();");
+                    writer.WriteLine("var capturedArguments = singleUseCallHandler.Arguments;");
+                    writer.WriteLine();
+                }
+
+                int index = 0;
+                foreach (var a in _setupArgumentEmitters.Where(a => a.NeedsCapturer))
+                {
+                    writer.WriteLine($"var {a.Parameter.Name}_capturedMatcher = listener.Matchers[{index}];");
+                    index++;
+                }
 
                 foreach (var argumentEmitter in _setupArgumentEmitters)
                 {
@@ -68,7 +89,7 @@ namespace Pretender.SourceGenerator.Emitter
                 var methodStrategy = _knownTypeSymbols.GetSingleMethodStrategy(SetupMethod);
 
                 // TODO: default value
-                writer.WriteLine($"return new ReturningCompiledSetup<{PretendType.ToFullDisplayString()}, {returnType.ToUnknownTypeString()}>(pretend, {_knownTypeSymbols.GetPretendName(PretendType)}.{methodStrategy.UniqueName}_MethodInfo, {matcherName}, expr.Target, defaultValue: default);");
+                writer.WriteLine($"return new ReturningCompiledSetup<{PretendType.ToFullDisplayString()}, {returnType.ToUnknownTypeString()}>(pretend, {_knownTypeSymbols.GetPretendName(PretendType)}.{methodStrategy.UniqueName}_MethodInfo, {matcherName}, expr, defaultValue: default);");
             }
             else
             {

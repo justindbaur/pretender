@@ -112,7 +112,7 @@ namespace Pretender.SourceGeneration
         {
             return pretend.GetOrCreateSetup<string>(0, static (pretend, expr) =>
             {
-                return new ReturningCompiledSetup<global::ISimpleInterface, string>(pretend, PretendISimpleInterface.get_Bar_MethodInfo, Cache.NoOpMatcher, expr.Target, defaultValue: default);
+                return new ReturningCompiledSetup<global::ISimpleInterface, string>(pretend, PretendISimpleInterface.get_Bar_MethodInfo, Cache.NoOpMatcher, expr, defaultValue: default);
             }, setupExpression);
         }
     }

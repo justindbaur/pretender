@@ -1,7 +1,8 @@
 ﻿using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using Pretender.Matchers;
 
-namespace Pretender.Matchers
+namespace Pretender.Internals
 {
     public sealed class MatcherListener : IDisposable
     {
@@ -26,9 +27,8 @@ namespace Pretender.Matchers
         {
             var listeners = s_listeners;
 
-            if (listeners != null && listeners.Count > 0)
+            if (listeners != null && listeners.TryPeek(out listener))
             {
-                listener = listeners.Peek();
                 return true;
             }
 
@@ -48,14 +48,17 @@ namespace Pretender.Matchers
             _matchers.Add(matcher);
         }
 
-        public IEnumerable<IMatcher> GetMatchers()
+        public IReadOnlyList<IMatcher> Matchers
         {
-            if (_matchers == null)
+            get
             {
-                return [];
-            }
+                if (_matchers == null)
+                {
+                    return [];
+                }
 
-            return _matchers;
+                return _matchers;
+            }
         }
 
         public void Dispose()

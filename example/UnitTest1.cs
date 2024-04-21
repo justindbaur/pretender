@@ -42,7 +42,7 @@ public class UnitTest1
         var pretend = Pretend.That<IInterface>();
 
         var setup = pretend
-            .Setup(i => i.Greeting("Hello", It.IsAny<int>()));
+            .Setup(i => i.Greeting("Hello", It.Is<int>(n => n > 10)));
 
         setup.Returns("2");
 

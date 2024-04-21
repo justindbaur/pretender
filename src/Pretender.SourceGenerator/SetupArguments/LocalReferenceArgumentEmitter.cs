@@ -18,7 +18,7 @@ namespace Pretender.SourceGenerator.SetupArguments
         {
             var localVariableName = $"{ArgumentSpec.Parameter.Name}_local";
             EmitArgumentAccessor(writer);
-            writer.WriteLine(@$"var {localVariableName} = target.GetType().GetField(""{_localReferenceOperation.Local.Name}"").GetValue(target);");
+            writer.WriteLine(@$"var {localVariableName} = setup.Target!.GetType().GetField(""{_localReferenceOperation.Local.Name}"").GetValue(setup.Target!);");
             EmitIfReturnFalseCheck(writer, $"{ArgumentSpec.Parameter.Name}_arg", localVariableName);
         }
 

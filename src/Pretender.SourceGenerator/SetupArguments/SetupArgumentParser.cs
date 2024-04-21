@@ -59,6 +59,12 @@ namespace Pretender.SourceGenerator.SetupArguments
                 }
 
                 // TODO: Parse args passed into the invocation
+                if (invocation.Arguments.Length > 0)
+                {
+                    // TODO: Some of these might be safe to rewrite
+                    return (new CaptureInvocationArgumentEmitter(_setupArgumentSpec), null);
+                }
+
                 return (new MatcherArgumentEmitter(matcherType, _setupArgumentSpec), null);
             }
             else

@@ -40,7 +40,7 @@ public partial class MainTests : TestBase
                 {
                     var pretend = Pretend.That<IMyInterface>();
 
-                    pretend.Setup(i => i.MethodAsync("Hi"));
+                    pretend.Setup(i => i.MethodAsync(It.Is<string>(v => v == "Hi!")));
                 }
             }
             """);
