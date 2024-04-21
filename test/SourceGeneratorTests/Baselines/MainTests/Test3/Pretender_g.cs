@@ -108,17 +108,54 @@ namespace Pretender.SourceGeneration
     file static class SetupInterceptors
     {
         [InterceptsLocation(@"MyTest.cs", 13, 6)]
-        internal static IPretendSetup<global::ISimpleInterface, string> Setup0(this Pretend<global::ISimpleInterface> pretend, Func<global::ISimpleInterface, string> setupExpression)
+        internal static IPretendSetup<global::ISimpleInterface, string?> Setup0(this Pretend<global::ISimpleInterface> pretend, Func<global::ISimpleInterface, string?> setupExpression)
         {
-            return pretend.GetOrCreateSetup<string>(0, static (pretend, expr) =>
+            return pretend.GetOrCreateSetup<string?>(0, static (pretend, expr) =>
             {
-                return new ReturningCompiledSetup<global::ISimpleInterface, string>(pretend, PretendISimpleInterface.get_Bar_MethodInfo, Cache.NoOpMatcher, expr, defaultValue: default);
+                Matcher matchCall = (callInfo, setup) =>
+                {
+                    var bar_arg = (string?)callInfo.Arguments[0];
+                    if (bar_arg != "1")
+                    {
+                        return false;
+                    }
+                    var baz_arg = (int)callInfo.Arguments[1];
+                    if (baz_arg != (int)(1))
+                    {
+                        return false;
+                    }
+                    return true;
+                };
+                return new ReturningCompiledSetup<global::ISimpleInterface, string?>(pretend, PretendISimpleInterface.Foo_MethodInfo, matchCall, expr, defaultValue: default);
             }, setupExpression);
         }
     }
 
     file static class VerifyInterceptors
     {
+        [InterceptsLocation(@"MyTest.cs", 18, 24)]
+        internal static void Verify0(this Pretend<global::ISimpleInterface> pretend, Func<global::ISimpleInterface, string?> setupExpression, Called called)
+        {
+            var setup = pretend.GetOrCreateSetup<string?>(0, static (pretend, expr) =>
+            {
+                Matcher matchCall = (callInfo, setup) =>
+                {
+                    var bar_arg = (string?)callInfo.Arguments[0];
+                    if (bar_arg != "1")
+                    {
+                        return false;
+                    }
+                    var baz_arg = (int)callInfo.Arguments[1];
+                    if (baz_arg != (int)(1))
+                    {
+                        return false;
+                    }
+                    return true;
+                };
+                return new ReturningCompiledSetup<global::ISimpleInterface, string?>(pretend, PretendISimpleInterface.Foo_MethodInfo, matchCall, expr, defaultValue: default);
+            }, setupExpression);
+            setup.Verify(called);
+        }
     }
 
     file static class CreateInterceptors

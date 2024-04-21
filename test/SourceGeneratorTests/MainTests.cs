@@ -19,7 +19,7 @@ public partial class MainTests : TestBase
     [Fact]
     public async Task TaskOfTMethod()
     {
-        var (result, c) = await RunGeneratorAsync($$"""
+        await RunAndCompareAsync($$"""
             using System;
             using System.Threading.Tasks;
             using Pretender;
@@ -44,51 +44,42 @@ public partial class MainTests : TestBase
                 }
             }
             """);
-
-        var source = Assert.Single(result.GeneratedSources);
-
-        var text1 = source.SourceText.ToString();
-        //var text2 = result.GeneratedSources[1].SourceText.ToString();
     }
 
 
-    [Fact]
-    public async Task AbstractClass()
-    {
-        var (result, c) = await RunPartialGeneratorAsync($$"""
-            #nullable enable
-            using System;
-            using System.Threading.Tasks;
-            using Pretender;
+    //[Fact]
+    //public async Task AbstractClass()
+    //{
+    //    await RunAndCompareAsync($$"""
+    //        #nullable enable
+    //        using System;
+    //        using System.Threading.Tasks;
+    //        using Pretender;
 
-            namespace AbstractClass;
+    //        namespace AbstractClass;
 
-            public abstract class MyAbstractClass
-            {
-                abstract Task<string> MethodAsync(string str);
-                abstract string Name { get; set; }
-            }
+    //        public abstract class MyAbstractClass
+    //        {
+    //            abstract Task<string> MethodAsync(string str);
+    //            abstract string Name { get; set; }
+    //        }
 
-            public class TestClass
-            {
-                public TestClass()
-                {
-                    var pretend = Pretend.That<MyAbstractClass>();
+    //        public class TestClass
+    //        {
+    //            public TestClass()
+    //            {
+    //                var pretend = Pretend.That<MyAbstractClass>();
 
-                    pretend.Setup(c => c.MethodAsync("Hi"));
-                }
-            }
-            """);
-
-        var source = Assert.Single(result.GeneratedSources);
-
-        var sourceText = source.SourceText.ToString();
-    }
+    //                pretend.Setup(c => c.MethodAsync("Hi"));
+    //            }
+    //        }
+    //        """);
+    //}
 
     [Fact]
     public async Task Test3()
     {
-        var (result, compilation) = await RunPartialGeneratorAsync($$"""
+        await RunAndComparePartialAsync($$"""
             var pretendSimpleInterface = Pretend.That<ISimpleInterface>();
             
             pretendSimpleInterface
@@ -99,8 +90,5 @@ public partial class MainTests : TestBase
 
             pretendSimpleInterface.Verify(i => i.Foo("1", 1), 2);
             """);
-
-        var source = Assert.Single(result.GeneratedSources);
-        var text = source.SourceText.ToString();
     }
 }

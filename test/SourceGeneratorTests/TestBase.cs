@@ -109,7 +109,7 @@ namespace SourceGeneratorTests
             });
         }
 
-        public async Task RunAndCompareAsync(string source, [CallerMemberName] string? testMethodName = null)
+        public async Task RunAndCompareAsync(string source, [CallerMemberName] string testMethodName = null!)
         {
             var (result, _) = await RunGeneratorAsync(source);
             Assert.All(result.GeneratedSources, s =>
@@ -118,10 +118,10 @@ namespace SourceGeneratorTests
             });
         }
 
-        private void CompareAgainstBaseline(GeneratedSourceResult result, string? testMethodName = null)
+        private void CompareAgainstBaseline(GeneratedSourceResult result, string testMethodName)
         {
             var normalizedName = result.HintName[..^3].Replace('.', '_') + ".cs";
-#if GENERATE_SOURCE
+#if !GENERATE_SOURCE
             var resultFileName = result.HintName.Replace('.', '_');
             var baseLineName = $"{GetType().Name}.{testMethodName}.{normalizedName}";
             var resourceName = Assert.Single(typeof(TestBase).Assembly.GetManifestResourceNames()
@@ -139,12 +139,14 @@ namespace SourceGeneratorTests
                 throw new Exception("Could not find directory.");
             }
 
-            var baselinePath = Path.Combine(
-                baseDirectory.FullName,
-                "Baselines",
-                GetType().Name,
-                testMethodName,
-                normalizedName);
+            var directory = Path.Combine(baseDirectory.FullName, "Baselines", GetType().Name, testMethodName);
+
+            if (!Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            var baselinePath = Path.Combine(directory, normalizedName);
 
             File.WriteAllText(baselinePath, result.SourceText.ToString());
 #endif
