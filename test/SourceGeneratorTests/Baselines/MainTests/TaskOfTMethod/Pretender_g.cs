@@ -59,11 +59,13 @@ namespace Pretender.SourceGeneration
             {
                 Matcher matchCall = (callInfo, setup) =>
                 {
-                    var singleUseCallHandler = new SingleUseCallHandler();
+                    var singleUseCallHandler = new SingleUseCallHandler<global::System.Threading.Tasks.Task<string>>();
                     var fake = new PretendIMyInterface(singleUseCallHandler);
+
                     var listener = MatcherListener.StartListening();
                     setup.Method.Invoke(setup.Target, [fake]);
                     listener.Dispose();
+
                     var capturedArguments = singleUseCallHandler.Arguments;
 
                     var str_capturedMatcher = listener.Matchers[0];
