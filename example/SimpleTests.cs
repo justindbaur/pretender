@@ -1,11 +1,11 @@
 using Pretender;
 
-namespace Example;
+namespace Example.Tests;
 
-public class UnitTest1
+public class SimpleTests
 {
     [Fact]
-    public void Test1()
+    public void OneLiteral_OneAnyMatcher()
     {
         var pretendMyInterface = Pretend.That<IInterface>()
             .Setup(i => i.Greeting("Mike", It.IsAny<int>()))
@@ -17,7 +17,7 @@ public class UnitTest1
     }
 
     [Fact]
-    public async Task Test2()
+    public async Task OneCapturedLocal()
     {
         var pretend = Pretend.That<IMyInterface>();
 
@@ -37,7 +37,7 @@ public class UnitTest1
     }
 
     [Fact]
-    public void Test3()
+    public void OneLiteral_OneFunctionMatcher()
     {
         var pretend = Pretend.That<IInterface>();
 
@@ -52,35 +52,18 @@ public class UnitTest1
         Assert.Equal("2", response);
 
         setup.Verify(1);
+        setup.Verify(..2);
     }
 }
 
 public interface IMyInterface
 {
-    /// <summary>
-    /// Hello
-    /// </summary>
-    /// <param name="name"></param>
-    /// <returns></returns>
     Task<string> Greeting(string? name);
 
     void Something();
 }
 
-public interface IMyOtherInterface
-{
-    void Greeting();
-}
-
-/// <summary>
-/// My Information
-/// </summary>
 public interface IInterface
 {
     string? Greeting(string name, int num);
-}
-
-public sealed class TestClass
-{
-
 }

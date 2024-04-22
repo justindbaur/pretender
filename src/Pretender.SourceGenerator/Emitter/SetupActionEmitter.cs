@@ -52,13 +52,24 @@ namespace Pretender.SourceGenerator.Emitter
                 if (_setupArgumentEmitters.Any(a => a.NeedsCapturer))
                 {
                     // TODO: Create single use call handler
-                    writer.WriteLine("var singleUseCallHandler = new SingleUseCallHandler();");
+                    if (returnType is null)
+                    {
+                        writer.WriteLine("var singleUseCallHandler = new SingleUseCallHandler();");
+                    }
+                    else
+                    {
+                        writer.WriteLine($"var singleUseCallHandler = new SingleUseCallHandler<{returnType.ToFullDisplayString()}>();");
+                    }
+
                     writer.WriteLine($"var fake = new {_knownTypeSymbols.GetPretendName(PretendType)}(singleUseCallHandler);");
                     // Emit and run capturer
+
+                    writer.WriteLine();
                     writer.WriteLine("var listener = MatcherListener.StartListening();");
                     writer.WriteLine("setup.Method.Invoke(setup.Target, [fake]);");
-
                     writer.WriteLine("listener.Dispose();");
+                    writer.WriteLine();
+
                     writer.WriteLine("var capturedArguments = singleUseCallHandler.Arguments;");
                     writer.WriteLine();
                 }

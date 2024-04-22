@@ -207,7 +207,7 @@ namespace Pretender.SourceGenerator.SetupArguments
                 default:
 #if DEBUG
                     // TODO: Figure out what operation this is
-                    Debugger.Launch();
+                    // Debugger.Launch();
                     // TODO: Report diagnostic?
                     // TODO: Do fallback support? by looping over ChildOperations?
 #endif

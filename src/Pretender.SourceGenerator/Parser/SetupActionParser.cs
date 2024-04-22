@@ -126,7 +126,7 @@ namespace Pretender.SourceGenerator.Parser
                 default:
 #if DEBUG
                     // TODO: Figure out what operation caused this, it's not ideal to "randomly" support operations
-                    Debugger.Launch();
+                    // Debugger.Launch();
 #endif
                     // Absolute fallback, most of our operations can be supported this way but it's nicer to be explicit
                     TraverseOperationList(operation.ChildOperations, invocationCandidates, cancellationToken);
