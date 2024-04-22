@@ -54,11 +54,11 @@ var myInterface = pretendMyInterface.Create();
 - [ ] Property setter
 - [ ] Static Abstract (not support but we should fake an implementation)
 - [ ] More matchers
-- [ ] Probably need a static matcher register :(
-- [ ] Support Matcher arguments and fallback if impossible
-- [ ] Obsolete public types that exist only for SourceGen
-- [ ] And move to Pretender.Internals namespace
-- [ ] pragma disable obsolete warnings
+- [x] Probably need a static matcher register :(
+- [x] Support Matcher arguments and fallback if impossible
+- [x] Obsolete public types that exist only for SourceGen
+- [x] And move to Pretender.Internals namespace
+- [x] pragma disable obsolete warnings
 - [ ] More Behaviors
 - [ ] Use CancellationToken everywhere
 
@@ -78,6 +78,6 @@ var myInterface = pretendMyInterface.Create();
 - [ ] Custom awaitable (honestly don't think I care)
 - [ ] Analyze constructor args them for likely match
 - [ ] Debugger story
-  - [ ] We do people want to step into
+  - [ ] What do we want to step into
   - [ ] What objects will they inspect and how can it be helpful
 - [ ] Documentation
