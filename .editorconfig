@@ -387,3 +387,4 @@ dotnet_style_prefer_collection_expression = true:suggestion
 dotnet_style_namespace_match_folder = true:suggestion
 
 dotnet_diagnostic.CA1811.severity = warning
+dotnet_diagnostic.CA1508.severity = warning

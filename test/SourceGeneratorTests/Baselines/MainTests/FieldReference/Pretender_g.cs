@@ -30,37 +30,36 @@ namespace Pretender.SourceGeneration
     using Pretender;
     using Pretender.Internals;
 
-    file class PretendIMyInterface : global::TaskOfTMethodNamespace.IMyInterface
+    file class PretendITest : global::FieldReference.ITest
     {
-        public static readonly MethodInfo MethodAsync_MethodInfo = typeof(PretendIMyInterface).GetMethod(nameof(MethodAsync))!;
+        public static readonly MethodInfo Method_MethodInfo = typeof(PretendITest).GetMethod(nameof(Method))!;
 
         private readonly ICallHandler _callHandler;
 
-        public PretendIMyInterface(ICallHandler callHandler)
+        public PretendITest(ICallHandler callHandler)
         {
             _callHandler = callHandler;
         }
 
-        public global::System.Threading.Tasks.Task<string> MethodAsync(string str)
+        public void Method(string arg)
         {
-            object?[] __arguments__ = [str];
-            var __callInfo__ = new CallInfo(MethodAsync_MethodInfo, __arguments__);
+            object?[] __arguments__ = [arg];
+            var __callInfo__ = new CallInfo(Method_MethodInfo, __arguments__);
             _callHandler.Handle(__callInfo__);
-            return (global::System.Threading.Tasks.Task<string>)__callInfo__.ReturnValue;
         }
     }
 
     file static class SetupInterceptors
     {
-        [InterceptsLocation(@"MyTest.cs", 21, 17)]
-        internal static IPretendSetup<global::TaskOfTMethodNamespace.IMyInterface, global::System.Threading.Tasks.Task<string>> Setup0(this Pretend<global::TaskOfTMethodNamespace.IMyInterface> pretend, Func<global::TaskOfTMethodNamespace.IMyInterface, global::System.Threading.Tasks.Task<string>> setupExpression)
+        [InterceptsLocation(@"MyTest.cs", 22, 17)]
+        internal static IPretendSetup<global::FieldReference.ITest> Setup0(this Pretend<global::FieldReference.ITest> pretend, Action<global::FieldReference.ITest> setupExpression)
         {
-            return pretend.GetOrCreateSetup<global::System.Threading.Tasks.Task<string>>(0, static (pretend, expr) =>
+            return pretend.GetOrCreateSetup(0, static (pretend, expr) =>
             {
                 Matcher matchCall = (callInfo, setup) =>
                 {
-                    var singleUseCallHandler = new SingleUseCallHandler<global::System.Threading.Tasks.Task<string>>();
-                    var fake = new PretendIMyInterface(singleUseCallHandler);
+                    var singleUseCallHandler = new SingleUseCallHandler();
+                    var fake = new PretendITest(singleUseCallHandler);
 
                     var listener = MatcherListener.StartListening();
                     try
@@ -74,15 +73,15 @@ namespace Pretender.SourceGeneration
 
                     var capturedArguments = singleUseCallHandler.Arguments;
 
-                    var str_capturedMatcher = listener.Matchers[0];
-                    var str_arg = (string)callInfo.Arguments[0];
-                    if (!str_capturedMatcher.Matches(str_arg))
+                    var arg_arg = (string)callInfo.Arguments[0];
+                    var arg_capturedArg = (string)capturedArguments[0];
+                    if (arg_arg != arg_capturedArg)
                     {
                         return false;
                     }
                     return true;
                 };
-                return new ReturningCompiledSetup<global::TaskOfTMethodNamespace.IMyInterface, global::System.Threading.Tasks.Task<string>>(pretend, PretendIMyInterface.MethodAsync_MethodInfo, matchCall, expr, defaultValue: default);
+                return new VoidCompiledSetup<global::FieldReference.ITest>();
             }, setupExpression);
         }
     }

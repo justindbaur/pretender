@@ -1,3 +1,5 @@
+using System.Security.Cryptography.X509Certificates;
+
 namespace SourceGeneratorTests;
 
 public partial class MainTests : TestBase
@@ -41,6 +43,37 @@ public partial class MainTests : TestBase
                     var pretend = Pretend.That<IMyInterface>();
 
                     pretend.Setup(i => i.MethodAsync(It.Is<string>(v => v == "Hi!")));
+                }
+            }
+            """);
+    }
+
+    [Fact]
+    public async Task FieldReference()
+    {
+        await RunAndCompareAsync($$"""
+            using System;
+            using Pretender;
+            
+            namespace FieldReference;
+
+            public static class Constants
+            {
+                public const string MyConstant = "my_string";
+            }
+
+            public interface ITest
+            {
+                void Method(string arg);
+            }
+
+            public class TestClass
+            {
+                public TestClass()
+                {
+                    var pretend = Pretend.That<ITest>();
+
+                    pretend.Setup(i => i.Method(Constants.MyConstant));
                 }
             }
             """);

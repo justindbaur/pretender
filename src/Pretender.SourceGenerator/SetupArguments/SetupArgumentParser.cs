@@ -42,8 +42,15 @@ namespace Pretender.SourceGenerator.SetupArguments
                 OperationKind.Literal => (new LiteralArgumentEmitter((ILiteralOperation)argumentValue, _setupArgumentSpec), null),
                 OperationKind.Invocation => ParseInvocation((IInvocationOperation)argumentValue, cancellationToken),
                 OperationKind.LocalReference => (new LocalReferenceArgumentEmitter((ILocalReferenceOperation)argumentValue, _setupArgumentSpec), null),
+                OperationKind.FieldReference => ParseFieldReference((IFieldReferenceOperation)argumentValue, cancellationToken),
                 _ => throw new NotImplementedException($"{argumentValue.Kind} is not a supported operation in setup arguments."),
             };
+        }
+
+        private (SetupArgumentEmitter? Emitter, ImmutableArray<Diagnostic>? Diagnostics) ParseFieldReference(IFieldReferenceOperation fieldReference, CancellationToken cancellationToken)
+        {
+            // For now fields references are just captured, we can change this to aggressively rewrite the callsite if there is desire
+            return (new CapturedArgumentEmitter(_setupArgumentSpec), null);
         }
 
         private (SetupArgumentEmitter? Emitter, ImmutableArray<Diagnostic>? Diagnostics) ParseInvocation(IInvocationOperation invocation, CancellationToken cancellationToken)
@@ -62,7 +69,7 @@ namespace Pretender.SourceGenerator.SetupArguments
                 if (invocation.Arguments.Length > 0)
                 {
                     // TODO: Some of these might be safe to rewrite
-                    return (new CaptureInvocationArgumentEmitter(_setupArgumentSpec), null);
+                    return (new CapturedMatcherInvocationEmitter(_setupArgumentSpec), null);
                 }
 
                 return (new MatcherArgumentEmitter(matcherType, _setupArgumentSpec), null);

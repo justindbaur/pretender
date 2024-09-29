@@ -12,7 +12,12 @@ namespace Pretender.Internals
         [DebuggerStepThrough]
         public void Execute(CallInfo callInfo)
         {
-            ExecuteCore(callInfo);
+            var matched = ExecuteCore(callInfo);
+
+            if (!matched)
+            {
+                return;
+            }
 
             // Run behavior
             if (_behavior is null)

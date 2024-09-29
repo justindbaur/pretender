@@ -29,13 +29,14 @@ namespace Pretender.Internals
             _behavior = behavior;
         }
 
-        public void ExecuteCore(CallInfo callInfo)
+        public bool ExecuteCore(CallInfo callInfo)
         {
             if (!Matches(callInfo))
             {
-                return;
+                return false;
             }
             TimesCalled++;
+            return true;
         }
 
         public bool Matches(CallInfo callInfo)

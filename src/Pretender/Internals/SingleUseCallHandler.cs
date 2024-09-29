@@ -5,7 +5,7 @@ namespace Pretender.Internals
     /// <summary>
     /// **FOR INTERNAL USE ONLY**
     /// </summary>
-    public class SingleUseCallHandler<T> : ICallHandler
+    public sealed class SingleUseCallHandler<T> : ICallHandler
     {
         public object?[] Arguments { get; private set; } = null!;
 

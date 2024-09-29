@@ -8,6 +8,7 @@ namespace Pretender
         {
             MethodInfo = methodInfo;
             Arguments = arguments;
+        
         }
 
         public MethodInfo MethodInfo { get; }

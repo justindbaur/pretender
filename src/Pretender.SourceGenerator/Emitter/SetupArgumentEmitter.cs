@@ -19,6 +19,7 @@ namespace Pretender.SourceGenerator.Emitter
         public virtual bool EmitsMatcher => true;
         public ImmutableArray<ILocalSymbol> NeededLocals { get; }
         public virtual bool NeedsCapturer { get; }
+        public virtual bool NeedsMatcher { get; }
 
         public abstract void EmitArgumentMatcher(IndentedTextWriter writer, CancellationToken cancellationToken);
 

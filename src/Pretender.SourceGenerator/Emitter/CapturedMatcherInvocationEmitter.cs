@@ -3,13 +3,14 @@ using Pretender.SourceGenerator.Writing;
 
 namespace Pretender.SourceGenerator.Emitter
 {
-    internal class CaptureInvocationArgumentEmitter : SetupArgumentEmitter
+    internal class CapturedMatcherInvocationEmitter : SetupArgumentEmitter
     {
-        public CaptureInvocationArgumentEmitter(SetupArgumentSpec argumentSpec) : base(argumentSpec)
+        public CapturedMatcherInvocationEmitter(SetupArgumentSpec argumentSpec) : base(argumentSpec)
         {
         }
 
         public override bool NeedsCapturer => true;
+        public override bool NeedsMatcher => true;
 
         public override void EmitArgumentMatcher(IndentedTextWriter writer, CancellationToken cancellationToken)
         {

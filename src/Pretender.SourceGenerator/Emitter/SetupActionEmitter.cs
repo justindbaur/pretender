@@ -66,8 +66,16 @@ namespace Pretender.SourceGenerator.Emitter
 
                     writer.WriteLine();
                     writer.WriteLine("var listener = MatcherListener.StartListening();");
-                    writer.WriteLine("setup.Method.Invoke(setup.Target, [fake]);");
-                    writer.WriteLine("listener.Dispose();");
+                    writer.WriteLine("try");
+                    using (writer.WriteBlock())
+                    {
+                        writer.WriteLine("setup.Method.Invoke(setup.Target, [fake]);");
+                    }
+                    writer.WriteLine("finally");
+                    using (writer.WriteBlock())
+                    {
+                        writer.WriteLine("listener.Dispose();");
+                    }
                     writer.WriteLine();
 
                     writer.WriteLine("var capturedArguments = singleUseCallHandler.Arguments;");
@@ -75,7 +83,7 @@ namespace Pretender.SourceGenerator.Emitter
                 }
 
                 int index = 0;
-                foreach (var a in _setupArgumentEmitters.Where(a => a.NeedsCapturer))
+                foreach (var a in _setupArgumentEmitters.Where(a => a.NeedsMatcher))
                 {
                     writer.WriteLine($"var {a.Parameter.Name}_capturedMatcher = listener.Matchers[{index}];");
                     index++;
