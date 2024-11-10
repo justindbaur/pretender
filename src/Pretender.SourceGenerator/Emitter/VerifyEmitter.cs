@@ -1,4 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 using Pretender.SourceGenerator.Writing;
 
@@ -21,9 +23,11 @@ namespace Pretender.SourceGenerator.Emitter
 
         public void Emit(IndentedTextWriter writer, int index, CancellationToken cancellationToken)
         {
-            // TODO: Create method trivia
-            var location = new InterceptsLocationInfo(_invocationOperation);
-            writer.WriteLine(@$"[InterceptsLocation(@""{location.FilePath}"", {location.LineNumber}, {location.CharacterNumber})]");
+
+#pragma warning disable RSEXPERIMENTAL002 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+            var location = _invocationOperation.SemanticModel.GetInterceptableLocation(((InvocationExpressionSyntax)_invocationOperation.Syntax));
+            writer.WriteLine(location!.GetInterceptsLocationAttributeSyntax());
+#pragma warning restore RSEXPERIMENTAL002 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
             // TODO: Get property setup expression type
             var setupExpressionType = _returnType != null

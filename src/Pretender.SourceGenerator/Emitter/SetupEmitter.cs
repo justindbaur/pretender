@@ -1,4 +1,7 @@
-﻿using Microsoft.CodeAnalysis.Operations;
+﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Operations;
 using Pretender.SourceGenerator.Writing;
 
 namespace Pretender.SourceGenerator.Emitter
@@ -20,7 +23,9 @@ namespace Pretender.SourceGenerator.Emitter
             var setupMethod = _setupActionEmitter.SetupMethod;
             var pretendType = _setupActionEmitter.PretendType;
 
-            var location = new InterceptsLocationInfo(_setupInvocation);
+#pragma warning disable RSEXPERIMENTAL002 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+            var location = _setupInvocation.SemanticModel!.GetInterceptableLocation((InvocationExpressionSyntax)_setupInvocation.Syntax, cancellationToken);
+#pragma warning restore RSEXPERIMENTAL002 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
             string typeArgs;
             string actionType;
@@ -35,7 +40,9 @@ namespace Pretender.SourceGenerator.Emitter
                 actionType = "Func";
             }
 
-            writer.WriteLine(@$"[InterceptsLocation(@""{location.FilePath}"", {location.LineNumber}, {location.CharacterNumber})]");
+#pragma warning disable RSEXPERIMENTAL002 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+            writer.WriteLine(location!.GetInterceptsLocationAttributeSyntax());
+#pragma warning restore RSEXPERIMENTAL002 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
             writer.Write($"internal static IPretendSetup{typeArgs} Setup{index}");
             writer.WriteLine($"(this Pretend<{pretendType.ToUnknownTypeString()}> pretend, {actionType}{typeArgs} setupExpression)");
             using (writer.WriteBlock())

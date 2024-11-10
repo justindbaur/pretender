@@ -1,6 +1,7 @@
 ﻿using System.Collections.Immutable;
 using System.Diagnostics;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 using Pretender.SourceGenerator.Parser;
@@ -9,7 +10,9 @@ namespace Pretender.SourceGenerator.Invocation
 {
     internal class CreateInvocation
     {
-        public CreateInvocation(IInvocationOperation operation, ImmutableArray<ITypeSymbol>? typeArguments, InterceptsLocationInfo location)
+#pragma warning disable RSEXPERIMENTAL002 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+        public CreateInvocation(IInvocationOperation operation, ImmutableArray<ITypeSymbol>? typeArguments, InterceptableLocation location)
+#pragma warning restore RSEXPERIMENTAL002 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
         {
             Operation = operation;
             TypeArguments = typeArguments;
@@ -18,7 +21,9 @@ namespace Pretender.SourceGenerator.Invocation
 
         public IInvocationOperation Operation { get; }
         public ImmutableArray<ITypeSymbol>? TypeArguments { get; }
-        public InterceptsLocationInfo Location { get; }
+#pragma warning disable RSEXPERIMENTAL002 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+        public InterceptableLocation Location { get; }
+#pragma warning restore RSEXPERIMENTAL002 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
         public static bool IsCandidateSyntaxNode(SyntaxNode node)
         {
@@ -34,10 +39,12 @@ namespace Pretender.SourceGenerator.Invocation
         public static CreateInvocation? Create(GeneratorSyntaxContext context, CancellationToken cancellationToken)
         {
             Debug.Assert(IsCandidateSyntaxNode(context.Node));
+#pragma warning disable RSEXPERIMENTAL002 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
             return context.SemanticModel.GetOperation(context.Node, cancellationToken) is IInvocationOperation operation
                 && IsCreateOperation(operation, out var typeArguments)
-                ? new CreateInvocation(operation, typeArguments, new InterceptsLocationInfo(operation))
+                ? new CreateInvocation(operation, typeArguments, operation.SemanticModel.GetInterceptableLocation((InvocationExpressionSyntax)operation.Syntax)!)
                 : null;
+#pragma warning restore RSEXPERIMENTAL002 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
         }
 
         private static bool IsCreateOperation(IInvocationOperation operation, out ImmutableArray<ITypeSymbol>? typeArguments)
