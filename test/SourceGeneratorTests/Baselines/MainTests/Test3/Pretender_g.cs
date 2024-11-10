@@ -15,7 +15,7 @@ namespace System.Runtime.CompilerServices
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
     file sealed class InterceptsLocationAttribute : Attribute
     {
-        public InterceptsLocationAttribute(string filePath, int line, int column)
+        public InterceptsLocationAttribute(int version, string data)
         {
         }
     }
@@ -107,7 +107,7 @@ namespace Pretender.SourceGeneration
 
     file static class SetupInterceptors
     {
-        [InterceptsLocation(@"MyTest.cs", 13, 6)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute(1, "00nUpp0g7RW7juGzPi8Bb/8AAABNeVRlc3QuY3M=")]
         internal static IPretendSetup<global::ISimpleInterface, string?> Setup0(this Pretend<global::ISimpleInterface> pretend, Func<global::ISimpleInterface, string?> setupExpression)
         {
             return pretend.GetOrCreateSetup<string?>(0, static (pretend, expr) =>
@@ -133,7 +133,7 @@ namespace Pretender.SourceGeneration
 
     file static class VerifyInterceptors
     {
-        [InterceptsLocation(@"MyTest.cs", 18, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute(1, "00nUpp0g7RW7juGzPi8Bb3oBAABNeVRlc3QuY3M=")]
         internal static void Verify0(this Pretend<global::ISimpleInterface> pretend, Func<global::ISimpleInterface, string?> setupExpression, Called called)
         {
             var setup = pretend.GetOrCreateSetup<string?>(0, static (pretend, expr) =>
@@ -160,7 +160,7 @@ namespace Pretender.SourceGeneration
 
     file static class CreateInterceptors
     {
-        [InterceptsLocation(@"MyTest.cs", 16, 38)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute(1, "00nUpp0g7RW7juGzPi8Bb1YBAABNeVRlc3QuY3M=")]
         internal static global::ISimpleInterface Create0(this Pretend<global::ISimpleInterface> pretend)
         {
             return new PretendISimpleInterface(pretend);

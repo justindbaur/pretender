@@ -15,7 +15,7 @@ namespace System.Runtime.CompilerServices
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
     file sealed class InterceptsLocationAttribute : Attribute
     {
-        public InterceptsLocationAttribute(string filePath, int line, int column)
+        public InterceptsLocationAttribute(int version, string data)
         {
         }
     }
@@ -51,7 +51,7 @@ namespace Pretender.SourceGeneration
 
     file static class SetupInterceptors
     {
-        [InterceptsLocation(@"MyTest.cs", 22, 17)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute(1, "xbIAQFg+yi3VoCyQ0Vr0a1IBAABNeVRlc3QuY3M=")]
         internal static IPretendSetup<global::FieldReference.ITest> Setup0(this Pretend<global::FieldReference.ITest> pretend, Action<global::FieldReference.ITest> setupExpression)
         {
             return pretend.GetOrCreateSetup(0, static (pretend, expr) =>

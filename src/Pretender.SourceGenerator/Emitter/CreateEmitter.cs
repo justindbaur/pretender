@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Operations;
 using Pretender.SourceGenerator.Parser;
 using Pretender.SourceGenerator.Writing;
@@ -11,10 +12,14 @@ namespace Pretender.SourceGenerator.Emitter
         private readonly IInvocationOperation _originalOperation;
         private readonly KnownTypeSymbols _knownTypeSymbols;
         private readonly ImmutableArray<ITypeSymbol>? _typeArguments;
-        private readonly ImmutableArray<InterceptsLocationInfo> _locations;
+#pragma warning disable RSEXPERIMENTAL002 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+        private readonly ImmutableArray<InterceptableLocation> _locations;
+#pragma warning restore RSEXPERIMENTAL002 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
         private readonly int _index;
 
-        public CreateEmitter(IInvocationOperation originalOperation, KnownTypeSymbols knownTypeSymbols, ImmutableArray<ITypeSymbol>? typeArguments, ImmutableArray<InterceptsLocationInfo> locations, int index)
+#pragma warning disable RSEXPERIMENTAL002 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+        public CreateEmitter(IInvocationOperation originalOperation, KnownTypeSymbols knownTypeSymbols, ImmutableArray<ITypeSymbol>? typeArguments, ImmutableArray<InterceptableLocation> locations, int index)
+#pragma warning restore RSEXPERIMENTAL002 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
         {
             _originalOperation = originalOperation;
             _knownTypeSymbols = knownTypeSymbols;
@@ -35,7 +40,9 @@ namespace Pretender.SourceGenerator.Emitter
 
             foreach (var location in _locations)
             {
-                writer.WriteLine(@$"[InterceptsLocation(@""{location.FilePath}"", {location.LineNumber}, {location.CharacterNumber})]");
+#pragma warning disable RSEXPERIMENTAL002 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+                writer.WriteLine(location.GetInterceptsLocationAttributeSyntax());
+#pragma warning restore RSEXPERIMENTAL002 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
             }
             writer.Write($"internal static {returnType.ToUnknownTypeString()} Create{_index}");
 
