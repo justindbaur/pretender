@@ -28,11 +28,6 @@ namespace Example.Tests
 
             var test = pretend.Create();
 
-            if (false)
-            {
-                throw new Exception("something");
-            }
-
             var result = test.MyMethod(actualArg);
 
             Assert.Equal(shouldMatch, result == 1);
