@@ -7,7 +7,7 @@ namespace Pretender.SourceGenerator.Emitter
     {
         public CapturedArgumentEmitter(SetupArgumentSpec argumentSpec) : base(argumentSpec)
         {
-            
+
         }
 
         public override bool NeedsCapturer => true;

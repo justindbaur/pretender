@@ -5,7 +5,7 @@ using Pretender.Internals;
 namespace Pretender;
 
 [DebuggerDisplay("{DebuggerToString(),nq}")]
-public sealed partial class Pretend<T> : ICallHandler
+public sealed partial class Pretend<T>
 {
     // TODO: Should we minimize allocations for rarely called mocks?
     private List<CallInfo>? _calls;
@@ -63,18 +63,10 @@ public sealed partial class Pretend<T> : ICallHandler
         called.Validate(timesCalled);
     }
 
-    void ICallHandler.Handle(CallInfo callInfo)
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public void Expect(CallInfo call)
     {
-        _calls ??= [];
-        _calls.Add(callInfo);
-
-        if (_setups != null)
-        {
-            foreach (var setup in _setups)
-            {
-                setup.Execute(callInfo);
-            }
-        }
+        
     }
 
     private string DebuggerToString()
@@ -106,16 +98,10 @@ public sealed partial class Pretend<T> : ICallHandler
     }
 }
 
-public static class Pretend
+public class Pretend
 {
     public static Pretend<T> That<T>()
     {
         return new Pretend<T>();
     }
-
-    //public static T Of<T>()
-    //{
-    //    var pretend = new Pretend<T>();
-    //    return pretend.Create();
-    //}
 }

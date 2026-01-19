@@ -125,7 +125,7 @@ namespace SourceGeneratorTests
             var resultFileName = result.HintName.Replace('.', '_');
             var baseLineName = $"{GetType().Name}.{testMethodName}.{normalizedName}";
             var resourceName = Assert.Single(typeof(TestBase).Assembly.GetManifestResourceNames()
-                .Where(r => r.EndsWith(baseLineName)));
+, r => r.EndsWith(baseLineName));
 
             using var stream = typeof(TestBase).Assembly.GetManifestResourceStream(resourceName)!;
             using var reader = new StreamReader(stream);
