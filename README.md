@@ -1,4 +1,4 @@
-# Pretender
+# Pretender!
 
 [![NuGet](https://img.shields.io/nuget/v/Pretender)](https://www.nuget.org/packages/Pretender)
 
